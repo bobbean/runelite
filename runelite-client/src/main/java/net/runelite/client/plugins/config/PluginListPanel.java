@@ -310,8 +310,10 @@ class PluginListPanel extends PluginPanel
 		}
 		else if (selectedCategory != null)
 		{
+			// exact substring match only; fuzzy matching lets "pluginhub"
+			// match the "plugin" keyword every non-hub plugin carries
 			pluginList.stream()
-				.filter(item -> Text.matchesSearchTerms(List.of(selectedCategory), item.getKeywords()))
+				.filter(item -> item.getKeywords().stream().anyMatch(k -> k.contains(selectedCategory)))
 				.sorted(byName)
 				.forEach(mainPanel::add);
 		}
@@ -344,7 +346,16 @@ class PluginListPanel extends PluginPanel
 		CategoryChip chip = new CategoryChip(label);
 		chip.addActionListener(ev ->
 		{
-			selectedCategory = searchTerm;
+			if (searchTerm != null && searchTerm.equals(selectedCategory))
+			{
+				// clicking the active chip again clears the filter back to All
+				selectedCategory = null;
+				group.setSelected(categoryChips.get(0).getModel(), true);
+			}
+			else
+			{
+				selectedCategory = searchTerm;
+			}
 			onSearchBarChanged();
 		});
 		group.add(chip);
