@@ -26,19 +26,26 @@ package net.runelite.client.plugins.config;
 
 import com.google.common.collect.ImmutableList;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
+import javax.swing.ButtonGroup;
+import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JToggleButton;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
@@ -63,9 +70,11 @@ import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.MultiplexingPluginPanel;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.Text;
 
 @Slf4j
@@ -88,6 +97,7 @@ class PluginListPanel extends PluginPanel
 	private final ConfigManager configManager;
 	private final PluginManager pluginManager;
 	private final Provider<ConfigPanel> configPanelProvider;
+	private final Provider<PluginHubPanel> pluginHubPanelProvider;
 	private final List<PluginConfigurationDescriptor> fakePlugins = new ArrayList<>();
 
 	@Getter
@@ -99,7 +109,11 @@ class PluginListPanel extends PluginPanel
 	private final IconTextField searchBar;
 	private final JScrollPane scrollPane;
 	private final FixedWidthPanel mainPanel;
+	private final List<CategoryChip> categoryChips = new ArrayList<>();
 	private List<PluginListItem> pluginList;
+
+	// search term of the selected category chip; null = All
+	private String selectedCategory;
 
 	@Inject
 	public PluginListPanel(
@@ -107,7 +121,8 @@ class PluginListPanel extends PluginPanel
 		PluginManager pluginManager,
 		ExternalPluginManager externalPluginManager,
 		EventBus eventBus,
-		Provider<ConfigPanel> configPanelProvider)
+		Provider<ConfigPanel> configPanelProvider,
+		Provider<PluginHubPanel> pluginHubPanelProvider)
 	{
 		super(false);
 
@@ -115,6 +130,7 @@ class PluginListPanel extends PluginPanel
 		this.pluginManager = pluginManager;
 		this.externalPluginManager = externalPluginManager;
 		this.configPanelProvider = configPanelProvider;
+		this.pluginHubPanelProvider = pluginHubPanelProvider;
 
 		muxer = new MultiplexingPluginPanel(this)
 		{
@@ -156,15 +172,25 @@ class PluginListPanel extends PluginPanel
 				onSearchBarChanged();
 			}
 		});
-		CATEGORY_TAGS.forEach(searchBar.getSuggestionListModel()::addElement);
-
 		setLayout(new BorderLayout());
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
+
+		// category chips replace the old search-suggestion dropdown
+		// (see docs/ui-rework/design/NAVIGATION.md §3)
+		JPanel chipBar = new JPanel(new DynamicGridLayout(0, 3, 4, 4));
+		chipBar.setOpaque(false);
+		ButtonGroup chipGroup = new ButtonGroup();
+		addCategoryChip(chipBar, chipGroup, "All", null).setSelected(true);
+		for (String tag : CATEGORY_TAGS)
+		{
+			addCategoryChip(chipBar, chipGroup, tag, tag.replace(" ", "").toLowerCase(Locale.ROOT));
+		}
 
 		JPanel topPanel = new JPanel();
 		topPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 		topPanel.setLayout(new BorderLayout(0, BORDER_OFFSET));
 		topPanel.add(searchBar, BorderLayout.CENTER);
+		topPanel.add(chipBar, BorderLayout.SOUTH);
 		add(topPanel, BorderLayout.NORTH);
 
 		mainPanel = new FixedWidthPanel();
@@ -179,6 +205,16 @@ class PluginListPanel extends PluginPanel
 		scrollPane = new JScrollPane(northPanel);
 		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		add(scrollPane, BorderLayout.CENTER);
+
+		// the Plugin Hub lives here now, not in the top tab strip; it becomes
+		// its own window in Phase 4 (see docs/ui-rework/design/NAVIGATION.md §2)
+		JButton hubButton = new JButton("Browse Plugin Hub...");
+		hubButton.addActionListener(ev -> muxer.pushState(pluginHubPanelProvider.get()));
+
+		JPanel hubRow = new JPanel(new BorderLayout());
+		hubRow.setBorder(new EmptyBorder(0, 10, 10, 10));
+		hubRow.add(hubButton, BorderLayout.CENTER);
+		add(hubRow, BorderLayout.SOUTH);
 	}
 
 	void rebuildPluginList()
@@ -258,9 +294,134 @@ class PluginListPanel extends PluginPanel
 	private void onSearchBarChanged()
 	{
 		final String text = searchBar.getText();
-		pluginList.forEach(mainPanel::remove);
-		PluginSearch.search(pluginList, text).forEach(mainPanel::add);
+		final boolean searching = !text.isEmpty();
+		mainPanel.removeAll();
+
+		// a text query overrides category browsing
+		for (CategoryChip chip : categoryChips)
+		{
+			chip.setEnabled(!searching);
+		}
+
+		final Comparator<PluginListItem> byName = Comparator.comparing(p -> p.getPluginConfig().getName());
+		if (searching)
+		{
+			PluginSearch.search(pluginList, text).forEach(mainPanel::add);
+		}
+		else if (selectedCategory != null)
+		{
+			pluginList.stream()
+				.filter(item -> Text.matchesSearchTerms(List.of(selectedCategory), item.getKeywords()))
+				.sorted(byName)
+				.forEach(mainPanel::add);
+		}
+		else
+		{
+			List<PluginListItem> pinned = pluginList.stream()
+				.filter(PluginListItem::isPinned)
+				.sorted(byName)
+				.collect(Collectors.toList());
+
+			if (!pinned.isEmpty())
+			{
+				mainPanel.add(sectionHeader("Pinned"));
+				pinned.forEach(mainPanel::add);
+				mainPanel.add(sectionHeader("All plugins"));
+			}
+
+			pluginList.stream()
+				.filter(item -> !item.isPinned())
+				.sorted(byName)
+				.forEach(mainPanel::add);
+		}
+		mainPanel.revalidate();
+		mainPanel.repaint();
 		revalidate();
+	}
+
+	private CategoryChip addCategoryChip(JPanel chipBar, ButtonGroup group, String label, String searchTerm)
+	{
+		CategoryChip chip = new CategoryChip(label);
+		chip.addActionListener(ev ->
+		{
+			selectedCategory = searchTerm;
+			onSearchBarChanged();
+		});
+		group.add(chip);
+		chipBar.add(chip);
+		categoryChips.add(chip);
+		return chip;
+	}
+
+	private static JLabel sectionHeader(String text)
+	{
+		JLabel label = new JLabel(text.toUpperCase(Locale.ROOT));
+		label.setFont(FontManager.getSmallFont());
+		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		label.setBorder(new EmptyBorder(Theme.SPACE_8, Theme.SPACE_2, 0, 0));
+		return label;
+	}
+
+	private static class CategoryChip extends JToggleButton
+	{
+		CategoryChip(String label)
+		{
+			super(label);
+			setFont(FontManager.getSmallFont());
+			setFocusable(false);
+			setFocusPainted(false);
+			setContentAreaFilled(false);
+			setBorder(new EmptyBorder(3, Theme.SPACE_8, 4, Theme.SPACE_8));
+			setRolloverEnabled(true);
+			addChangeListener(ev -> updateForeground());
+			updateForeground();
+		}
+
+		private void updateForeground()
+		{
+			Theme theme = Theme.getActive();
+			Color fg;
+			if (isSelected())
+			{
+				fg = theme.getOnAccent();
+			}
+			else if (!isEnabled())
+			{
+				fg = theme.getTextDisabled();
+			}
+			else if (getModel().isRollover())
+			{
+				fg = theme.getTextPrimary();
+			}
+			else
+			{
+				fg = theme.getTextMuted();
+			}
+
+			if (!fg.equals(getForeground()))
+			{
+				setForeground(fg);
+			}
+		}
+
+		@Override
+		protected void paintComponent(Graphics g)
+		{
+			Theme theme = Theme.getActive();
+			if (isSelected())
+			{
+				g.setColor(theme.getAccent());
+				g.fillRect(0, 0, getWidth(), getHeight());
+			}
+			else
+			{
+				g.setColor(getModel().isRollover() && isEnabled() ? theme.getSurfaceHover() : theme.getControl());
+				g.fillRect(0, 0, getWidth(), getHeight());
+				g.setColor(theme.getBorderSubtle());
+				g.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
+			}
+			super.paintComponent(g);
+		}
 	}
 
 	void openConfigurationPanel(String configGroup)

@@ -28,17 +28,15 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.GridLayout;
 import javax.inject.Inject;
-import javax.inject.Provider;
 import javax.inject.Singleton;
-import javax.swing.ImageIcon;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
-import net.runelite.client.util.ImageUtil;
 
 @Singleton
 class TopLevelConfigPanel extends PluginPanel
@@ -53,14 +51,12 @@ class TopLevelConfigPanel extends PluginPanel
 
 	private boolean active = false;
 	private PluginPanel current;
-	private boolean removeOnTabChange;
 
 	@Inject
 	TopLevelConfigPanel(
 		EventBus eventBus,
 		PluginListPanel pluginListPanel,
-		ProfilePanel profilePanel,
-		Provider<PluginHubPanel> pluginHubPanelProvider
+		ProfilePanel profilePanel
 	)
 	{
 		super(false);
@@ -80,56 +76,32 @@ class TopLevelConfigPanel extends PluginPanel
 		add(content, BorderLayout.CENTER);
 
 		this.pluginListPanel = pluginListPanel;
-		pluginListPanelTab = addTab(pluginListPanel.getMuxer(), "config_icon_lg.png", "Configuration");
+		pluginListPanelTab = addTab(pluginListPanel.getMuxer(), "Plugins");
 
-		addTab(profilePanel, "profile_icon.png", "Profiles");
-
-		addTab(pluginHubPanelProvider, "plugin_hub_icon.png", "Plugin Hub");
+		addTab(profilePanel, "Profiles");
 
 		tabGroup.select(pluginListPanelTab);
 	}
 
-	private MaterialTab addTab(PluginPanel panel, String image, String tooltip)
+	private MaterialTab addTab(PluginPanel panel, String title)
 	{
-		MaterialTab mt = new MaterialTab(
-			new ImageIcon(ImageUtil.loadImageResource(TopLevelConfigPanel.class, image)),
-			tabGroup, null);
-		mt.setToolTipText(tooltip);
+		MaterialTab mt = new MaterialTab(title, tabGroup, null);
+		mt.setHorizontalAlignment(SwingConstants.CENTER);
 		tabGroup.addTab(mt);
 
-		content.add(image, panel.getWrappedPanel());
+		content.add(title, panel.getWrappedPanel());
 		eventBus.register(panel);
 
 		mt.setOnSelectEvent(() ->
 		{
-			switchTo(image, panel, false);
+			switchTo(title, panel);
 			return true;
 		});
 		return mt;
 	}
 
-	private MaterialTab addTab(Provider<? extends PluginPanel> panelProvider, String image, String tooltip)
+	private void switchTo(String cardName, PluginPanel panel)
 	{
-		MaterialTab mt = new MaterialTab(
-			new ImageIcon(ImageUtil.loadImageResource(TopLevelConfigPanel.class, image)),
-			tabGroup, null);
-		mt.setToolTipText(tooltip);
-		tabGroup.addTab(mt);
-
-		mt.setOnSelectEvent(() ->
-		{
-			PluginPanel panel = panelProvider.get();
-			content.add(image, panel.getWrappedPanel());
-			eventBus.register(panel);
-			switchTo(image, panel, true);
-			return true;
-		});
-		return mt;
-	}
-
-	private void switchTo(String cardName, PluginPanel panel, boolean removeOnTabChange)
-	{
-		boolean doRemove = this.removeOnTabChange;
 		PluginPanel prevPanel = current;
 		if (active)
 		{
@@ -138,16 +110,8 @@ class TopLevelConfigPanel extends PluginPanel
 		}
 
 		current = panel;
-		this.removeOnTabChange = removeOnTabChange;
 
 		layout.show(content, cardName);
-
-		if (doRemove)
-		{
-			content.remove(prevPanel.getWrappedPanel());
-			eventBus.unregister(prevPanel);
-		}
-
 		content.revalidate();
 	}
 

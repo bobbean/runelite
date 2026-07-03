@@ -28,7 +28,6 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.ui.FlatNativeWindowBorder;
 import com.formdev.flatlaf.util.SystemInfo;
 import com.google.common.base.Strings;
-import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
 import java.awt.AWTException;
 import java.awt.Canvas;
@@ -75,19 +74,16 @@ import javax.inject.Named;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 import javax.swing.Box;
-import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JRootPane;
-import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.ToolTipManager;
@@ -120,6 +116,7 @@ import net.runelite.client.input.MouseListener;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.ui.laf.RuneLiteLAF;
 import net.runelite.client.ui.laf.RuneLiteRootPaneUI;
+import net.runelite.client.ui.sidebar.SidebarPane;
 import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.HotkeyListener;
 import net.runelite.client.util.ImageUtil;
@@ -155,7 +152,7 @@ public class ClientUI
 	private BufferedImage sidebarOpenIcon;
 	private BufferedImage sidebarCloseIcon;
 
-	private JTabbedPane sidebar;
+	private SidebarPane sidebar;
 	private final TreeSet<NavigationButton> sidebarEntries = new TreeSet<>(NavigationButton.COMPARATOR);
 	private final Deque<HistoryEntry> selectedTabHistory = new ArrayDeque<>();
 	private NavigationButton selectedTab;
@@ -243,16 +240,7 @@ public class ClientUI
 			return;
 		}
 
-		final int TAB_SIZE = 16;
-		Icon icon = new ImageIcon(ImageUtil.resizeImage(navBtn.getIcon(), TAB_SIZE, TAB_SIZE));
-
-		sidebar.insertTab(null, icon, navBtn.getPanel().getWrappedPanel(), navBtn.getTooltip(),
-			sidebarEntries.headSet(navBtn).size());
-		// insertTab changes the selected index when the first tab is inserted, avoid this
-		if (sidebar.getTabCount() == 1)
-		{
-			sidebar.setSelectedIndex(-1);
-		}
+		sidebar.addNavigation(navBtn);
 	}
 
 	void removeNavigation(NavigationButton navBtn)
@@ -265,7 +253,7 @@ public class ClientUI
 		{
 			boolean closingOpenTab = !selectedTabHistory.isEmpty() && selectedTabHistory.getLast().navBtn == navBtn;
 			selectedTabHistory.removeIf(it -> it.navBtn == navBtn);
-			sidebar.remove(navBtn.getPanel().getWrappedPanel());
+			sidebar.removeNavigation(navBtn);
 			if (closingOpenTab)
 			{
 				HistoryEntry entry = selectedTabHistory.isEmpty()
@@ -404,32 +392,9 @@ public class ClientUI
 			clientPanel = new ClientPanel(client);
 			content.add(clientPanel);
 
-			sidebar = new JTabbedPane(JTabbedPane.RIGHT);
-			sidebar.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-			sidebar.setOpaque(true);
-			sidebar.putClientProperty(FlatClientProperties.STYLE, "tabInsets: 2,5,2,5; variableSize: true; deselectable: true; tabHeight: 26");
-			sidebar.setSelectedIndex(-1);
-			sidebar.addChangeListener(ev ->
+			sidebar = new SidebarPane(configManager);
+			sidebar.setSelectionListener((oldSelectedTab, newSelectedTab) ->
 			{
-				NavigationButton oldSelectedTab = selectedTab;
-				NavigationButton newSelectedTab;
-
-				int index = sidebar.getSelectedIndex();
-				if (index < 0)
-				{
-					newSelectedTab = null;
-				}
-				else
-				{
-					// maybe just include a map component -> navbtn?
-					newSelectedTab = Iterables.get(sidebarEntries, index);
-				}
-
-				if (oldSelectedTab == newSelectedTab)
-				{
-					return;
-				}
-
 				selectedTab = newSelectedTab;
 
 				if (sidebar.isVisible())
@@ -448,36 +413,6 @@ public class ClientUI
 					if (newSelectedTab == null)
 					{
 						giveClientFocus();
-					}
-				}
-			});
-			sidebar.addMouseListener(new java.awt.event.MouseAdapter()
-			{
-				@Override
-				public void mouseClicked(MouseEvent e)
-				{
-					if (e.getButton() == MouseEvent.BUTTON3)
-					{
-						int index = 0;
-						for (var navBtn : sidebarEntries)
-						{
-							Rectangle bounds = sidebar.getBoundsAt(index++);
-							if (bounds != null && bounds.contains(e.getX(), e.getY()))
-							{
-								if (navBtn.getPopup() != null)
-								{
-									var menu = new JPopupMenu();
-									navBtn.getPopup().forEach((name, cb) ->
-									{
-										var menuItem = new JMenuItem(name);
-										menuItem.addActionListener(ev -> cb.run());
-										menu.add(menuItem);
-									});
-									menu.show(sidebar, e.getX(), e.getY());
-								}
-								return;
-							}
-						}
 					}
 				}
 			});
@@ -606,9 +541,7 @@ public class ClientUI
 			}
 			else
 			{
-				sidebar.putClientProperty(
-					FlatClientProperties.TABBED_PANE_TRAILING_COMPONENT,
-					toolbarPanel.createSidebarPanel());
+				sidebar.setTrailing(toolbarPanel);
 			}
 
 			// Update config
@@ -1058,8 +991,7 @@ public class ClientUI
 			return;
 		}
 
-		int index = navBtn == null ? -1 : sidebarEntries.headSet(navBtn).size();
-		sidebar.setSelectedIndex(index);
+		sidebar.select(navBtn);
 
 		toggleSidebar(showSidebar, false);
 
@@ -1121,7 +1053,7 @@ public class ClientUI
 
 	private void togglePluginPanel()
 	{
-		if (!sidebar.isVisible() || sidebar.getSelectedIndex() < 0)
+		if (!sidebar.isVisible() || sidebar.getSelected() == null)
 		{
 			toggleSidebar(true, false);
 
@@ -1145,7 +1077,7 @@ public class ClientUI
 		}
 		else
 		{
-			sidebar.setSelectedIndex(-1);
+			sidebar.select(null);
 		}
 	}
 

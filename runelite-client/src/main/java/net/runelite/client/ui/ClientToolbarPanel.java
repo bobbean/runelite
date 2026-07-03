@@ -27,6 +27,7 @@ package net.runelite.client.ui;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.util.TreeMap;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -34,6 +35,7 @@ import javax.swing.JButton;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
 
@@ -42,10 +44,16 @@ import net.runelite.client.util.SwingUtil;
  */
 class ClientToolbarPanel extends JPanel
 {
+	// entries at or above this priority are window actions (e.g. the sidebar
+	// toggle); a divider separates them from plugin actions
+	private static final int WINDOW_ACTION_PRIORITY = 100;
+
 	private final TreeMap<NavigationButton, Component> entries = new TreeMap<>(NavigationButton.COMPARATOR);
+	private final boolean isInSidebar;
 
 	ClientToolbarPanel(boolean isInSidebar)
 	{
+		this.isInSidebar = isInSidebar;
 		setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
 		if (isInSidebar)
@@ -58,6 +66,40 @@ class ClientToolbarPanel extends JPanel
 		}
 
 		revalidate();
+	}
+
+	@Override
+	protected void paintComponent(Graphics g)
+	{
+		super.paintComponent(g);
+
+		// divider between plugin actions and window actions
+		Component firstWindowAction = null;
+		for (var entry : entries.entrySet())
+		{
+			if (entry.getKey().getPriority() >= WINDOW_ACTION_PRIORITY)
+			{
+				firstWindowAction = entry.getValue();
+				break;
+			}
+		}
+
+		if (firstWindowAction == null || firstWindowAction == entries.firstEntry().getValue())
+		{
+			return;
+		}
+
+		g.setColor(Theme.getActive().getBorderSubtle());
+		if (isInSidebar)
+		{
+			int y = firstWindowAction.getY() - 2;
+			g.fillRect(4, y, getWidth() - 8, 1);
+		}
+		else
+		{
+			int x = firstWindowAction.getX() - 2;
+			g.fillRect(x, 3, 1, getHeight() - 6);
+		}
 	}
 
 	JButton add(NavigationButton nb, boolean resize)

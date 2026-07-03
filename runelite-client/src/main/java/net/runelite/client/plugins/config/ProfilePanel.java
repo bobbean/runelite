@@ -29,7 +29,7 @@ import com.google.common.base.CharMatcher;
 import com.google.common.base.Strings;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.GridLayout;
+import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -53,10 +53,11 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
-import javax.swing.JToggleButton;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
@@ -83,6 +84,7 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.DragAndDropReorderPane;
 import net.runelite.client.ui.components.MouseDragEventForwarder;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
 import net.runelite.client.util.Text;
@@ -93,16 +95,9 @@ class ProfilePanel extends PluginPanel
 	private static final int MAX_PROFILES = 64;
 
 	private static final ImageIcon ADD_ICON = new ImageIcon(ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "add_icon.png"));
-	private static final ImageIcon DELETE_ICON = new ImageIcon(ImageUtil.loadImageResource(ProfilePanel.class, "mdi_delete.png"));
-	private static final ImageIcon EXPORT_ICON = new ImageIcon(ImageUtil.loadImageResource(ProfilePanel.class, "mdi_export.png"));
-	private static final ImageIcon RENAME_ICON;
-	private static final ImageIcon RENAME_ACTIVE_ICON;
-	private static final ImageIcon CLONE_ICON = new ImageIcon(ImageUtil.loadImageResource(ProfilePanel.class, "mdi_content-duplicate.png"));
-	private static final ImageIcon LINK_ICON;
 	private static final ImageIcon LINK_ACTIVE_ICON;
-	private static final ImageIcon ARROW_RIGHT_ICON = new ImageIcon(ImageUtil.loadImageResource(ProfilePanel.class, "/util/arrow_right.png"));
-	private static final ImageIcon SYNC_ICON;
 	private static final ImageIcon SYNC_ACTIVE_ICON;
+	private static final ImageIcon MENU_ICON;
 
 	private final ConfigManager configManager;
 	private final ProfileManager profileManager;
@@ -121,17 +116,23 @@ class ProfilePanel extends PluginPanel
 
 	static
 	{
-		BufferedImage rename = ImageUtil.loadImageResource(ProfilePanel.class, "mdi_rename.png");
-		RENAME_ICON = new ImageIcon(rename);
-		RENAME_ACTIVE_ICON = new ImageIcon(ImageUtil.recolorImage(rename, ColorScheme.BRAND_ORANGE));
-
 		BufferedImage link = ImageUtil.loadImageResource(ProfilePanel.class, "/util/link.png");
-		LINK_ICON = new ImageIcon(link);
 		LINK_ACTIVE_ICON = new ImageIcon(ImageUtil.recolorImage(link, ColorScheme.BRAND_ORANGE));
 
 		BufferedImage sync = ImageUtil.loadImageResource(ProfilePanel.class, "cloud_sync.png");
-		SYNC_ICON = new ImageIcon(sync);
 		SYNC_ACTIVE_ICON = new ImageIcon(ImageUtil.recolorImage(sync, ColorScheme.BRAND_ORANGE));
+
+		// kebab: three dots, drawn (no such asset exists and the RS font has
+		// no vertical-ellipsis glyph)
+		BufferedImage menu = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = menu.createGraphics();
+		g.setColor(Theme.getActive().getTextMuted());
+		for (int i = 0; i < 3; i++)
+		{
+			g.fillRect(7, 3 + i * 4, 2, 2);
+		}
+		g.dispose();
+		MENU_ICON = new ImageIcon(menu);
 	}
 
 	@Inject
@@ -300,7 +301,6 @@ class ProfilePanel extends PluginPanel
 		{
 			SwingUtil.fastRemoveAll(profilesList);
 
-			Map<Long, ProfileCard> prevCards = cards;
 			cards = new HashMap<>();
 
 			long activePanel = configManager.getProfile().getId();
@@ -314,15 +314,13 @@ class ProfilePanel extends PluginPanel
 					continue;
 				}
 
-				ProfileCard prev = prevCards.get(profile.getId());
 				final long id = profile.getId();
 				final List<String> defaultForRsProfiles = profile.getDefaultForRsProfiles();
 				ProfileCard pc = new ProfileCard(
 					profile,
 					activePanel == id,
 					defaultForRsProfiles != null && defaultForRsProfiles.contains(rsProfileKey),
-					limited,
-					prev);
+					limited);
 				cards.put(profile.getId(), pc);
 				profilesList.add(pc);
 			}
@@ -336,21 +334,15 @@ class ProfilePanel extends PluginPanel
 
 	private class ProfileCard extends JPanel
 	{
-		private static final int CARD_WIDTH = 227;
-		private static final int LEFT_BORDER_WIDTH = 4;
-		private static final int LEFT_GAP = 4;
+		private static final int LEFT_BORDER_WIDTH = 3;
+		private static final int LEFT_GAP = 6;
 
 		private final ConfigProfile profile;
-		private final JButton delete;
 		private final JTextField name;
-		private final JButton activate;
-		private final JPanel buttons;
-		private final JToggleButton rename;
 
-		private boolean expanded;
 		private boolean active;
 
-		private ProfileCard(ConfigProfile profile, boolean isActive, boolean rsProfileDefault, boolean limited, ProfileCard prev)
+		private ProfileCard(ConfigProfile profile, boolean isActive, boolean rsProfileDefault, boolean limited)
 		{
 			this.profile = profile;
 
@@ -396,191 +388,58 @@ class ProfilePanel extends PluginPanel
 				}
 			});
 
-			activate = new JButton(ARROW_RIGHT_ICON);
-			activate.setDisabledIcon(ARROW_RIGHT_ICON);
-			activate.addActionListener(ev -> switchToProfile(profile.getId()));
-			SwingUtil.removeButtonDecorations(activate);
+			// badges, shown only when applicable
+			JLabel syncBadge = new JLabel(SYNC_ACTIVE_ICON);
+			syncBadge.setToolTipText("Cloud sync enabled");
+			syncBadge.setVisible(profile.isSync());
 
-			{
-				buttons = new JPanel();
-				buttons.setOpaque(false);
-				buttons.setLayout(new GridLayout(1, 0, 0, 0));
+			JLabel defaultBadge = new JLabel(LINK_ACTIVE_ICON);
+			defaultBadge.setToolTipText(defaultForRsProfilesTooltip(profile));
+			defaultBadge.setVisible(rsProfileDefault);
 
-				rename = new JToggleButton(RENAME_ICON);
-				rename.setSelectedIcon(RENAME_ACTIVE_ICON);
-				rename.setToolTipText("Rename profile");
-				SwingUtil.removeButtonDecorations(rename);
-				rename.addActionListener(ev ->
-				{
-					if (rename.isSelected())
-					{
-						startRenaming();
-					}
-					else
-					{
-						stopRenaming(true);
-					}
-				});
-				buttons.add(rename);
-
-				JButton clone = new JButton(CLONE_ICON);
-				clone.setToolTipText("Duplicate profile");
-				SwingUtil.removeButtonDecorations(clone);
-				clone.addActionListener(ev -> cloneProfile(profile));
-				clone.setEnabled(!limited);
-				buttons.add(clone);
-
-				JButton export = new JButton(EXPORT_ICON);
-				export.setToolTipText("Export profile");
-				SwingUtil.removeButtonDecorations(export);
-				export.addActionListener(ev ->
-				{
-					JFileChooser fileChooser = new JFileChooser();
-					fileChooser.setDialogTitle("Profile export");
-					fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("RuneLite properties", "properties"));
-					fileChooser.setAcceptAllFileFilterUsed(false);
-					fileChooser.setCurrentDirectory(lastFileChooserDirectory);
-					fileChooser.setSelectedFile(new File(fileChooser.getCurrentDirectory(), profile.getName() + ".properties"));
-					int selection = fileChooser.showSaveDialog(this);
-					if (selection == JFileChooser.APPROVE_OPTION)
-					{
-						File file = fileChooser.getSelectedFile();
-						lastFileChooserDirectory = file.getParentFile();
-						// add properties file extension
-						if (!file.getName().endsWith(".properties"))
-						{
-							file = new File(file.getParentFile(), file.getName() + ".properties");
-						}
-						exportProfile(profile, file);
-					}
-				});
-				buttons.add(export);
-
-				if (configManager.getRSProfileKey() != null)
-				{
-					JToggleButton defaultForRsProfile = new JToggleButton(LINK_ICON);
-					SwingUtil.removeButtonDecorations(defaultForRsProfile);
-					defaultForRsProfile.setSelectedIcon(LINK_ACTIVE_ICON);
-					defaultForRsProfile.setSelected(rsProfileDefault);
-
-					final List<String> defaultForRsProfiles = profile.getDefaultForRsProfiles();
-					final StringBuilder tooltip = new StringBuilder("<html>");
-					if (defaultForRsProfiles == null || defaultForRsProfiles.isEmpty())
-					{
-						tooltip.append("Set profile as default for the current RuneScape account");
-					}
-					else
-					{
-						tooltip.append("This profile is the default for the following RuneScape accounts:");
-						for (final String rsProfileKey : profile.getDefaultForRsProfiles())
-						{
-							final String ign = configManager.getConfiguration(ConfigManager.RSPROFILE_GROUP, rsProfileKey, ConfigManager.RSPROFILE_DISPLAY_NAME);
-							if (Strings.isNullOrEmpty(ign))
-							{
-								continue;
-							}
-
-							final RuneScapeProfileType worldType = configManager.getConfiguration(ConfigManager.RSPROFILE_GROUP, rsProfileKey, ConfigManager.RSPROFILE_TYPE, RuneScapeProfileType.class);
-
-							tooltip.append("<br>");
-							tooltip.append(ign);
-							if (worldType != RuneScapeProfileType.STANDARD)
-							{
-								tooltip
-									.append(" (")
-									.append(Text.titleCase(worldType))
-									.append(')');
-							}
-						}
-					}
-					tooltip.append("</html>");
-					defaultForRsProfile.setToolTipText(tooltip.toString());
-
-					defaultForRsProfile.addActionListener(ev ->
-					{
-						if (rsProfileDefault)
-						{
-							unsetRsProfileDefaultProfile();
-						}
-						else
-						{
-							setRsProfileDefaultProfile(profile.getId());
-						}
-					});
-					buttons.add(defaultForRsProfile);
-				}
-
-				if (sessionManager.getAccountSession() != null)
-				{
-					JToggleButton sync = new JToggleButton(SYNC_ICON);
-					SwingUtil.removeButtonDecorations(sync);
-					sync.setSelectedIcon(SYNC_ACTIVE_ICON);
-					sync.setToolTipText(profile.isSync() ? "Disable cloud sync" : "Enable cloud sync");
-					sync.setSelected(profile.isSync());
-					sync.addActionListener(ev -> toggleSync(ev, profile, sync.isSelected()));
-					buttons.add(sync);
-				}
-
-				delete = new JButton(DELETE_ICON);
-				delete.setToolTipText("Delete profile");
-				SwingUtil.removeButtonDecorations(delete);
-				delete.addActionListener(ev ->
-				{
-					int confirm = JOptionPane.showConfirmDialog(ProfileCard.this,
-						"Are you sure you want to delete this profile?",
-						"Warning", JOptionPane.OK_CANCEL_OPTION);
-					if (confirm == 0)
-					{
-						deleteProfile(profile);
-					}
-				});
-				buttons.add(delete);
-
-				// Ensure buttons do not expand beyond the intended card width; this would cause the activate button to
-				// disappear off the right edge of the card.
-				final int maxButtonsWidth = CARD_WIDTH - LEFT_BORDER_WIDTH - LEFT_GAP - activate.getPreferredSize().width;
-				if (buttons.getPreferredSize().width > maxButtonsWidth)
-				{
-					buttons.setMinimumSize(new Dimension(maxButtonsWidth, buttons.getMinimumSize().height));
-					buttons.setPreferredSize(new Dimension(maxButtonsWidth, buttons.getPreferredSize().height));
-				}
-			}
+			// selection is primary (click the card); everything else lives in
+			// the kebab menu (see docs/ui-rework/design/NAVIGATION.md §5)
+			JButton menuButton = new JButton(MENU_ICON);
+			menuButton.setToolTipText("Profile actions");
+			SwingUtil.removeButtonDecorations(menuButton);
+			menuButton.setPreferredSize(new Dimension(22, 0));
+			menuButton.addActionListener(ev -> buildActionsMenu(rsProfileDefault, limited).show(menuButton, 0, menuButton.getHeight()));
 
 			{
 				GroupLayout layout = new GroupLayout(this);
 				this.setLayout(layout);
 
-				layout.setVerticalGroup(layout.createParallelGroup()
-					.addGroup(layout.createSequentialGroup()
-						.addComponent(name, 24, 24, 24)
-						.addComponent(buttons))
-					.addComponent(activate, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE));
+				layout.setVerticalGroup(layout.createParallelGroup(GroupLayout.Alignment.CENTER)
+					.addComponent(name, 28, 28, 28)
+					.addComponent(syncBadge)
+					.addComponent(defaultBadge)
+					.addComponent(menuButton, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE));
 
 				layout.setHorizontalGroup(layout.createSequentialGroup()
 					.addGap(LEFT_GAP)
-					.addGroup(layout.createParallelGroup()
-						.addComponent(name)
-						.addComponent(buttons))
-					.addComponent(activate));
+					.addComponent(name)
+					.addComponent(syncBadge)
+					.addGap(2)
+					.addComponent(defaultBadge)
+					.addGap(2)
+					.addComponent(menuButton));
 			}
 
-			MouseAdapter expandListener = new MouseDragEventForwarder(profilesList)
+			// single click switches; double click on the active card renames
+			MouseAdapter clickListener = new MouseDragEventForwarder(profilesList)
 			{
 				@Override
 				public void mouseClicked(MouseEvent ev)
 				{
-					if (disabled(ev))
+					if (!interactive(ev))
 					{
-						if (ev.getClickCount() == 2)
+						if (ev.getClickCount() == 2 && active)
 						{
-							if (!active)
-							{
-								switchToProfile(profile.getId());
-							}
+							startRenaming();
 						}
-						else
+						else if (ev.getClickCount() == 1 && !active)
 						{
-							setExpanded(!expanded);
+							switchToProfile(profile.getId());
 						}
 					}
 				}
@@ -588,44 +447,124 @@ class ProfilePanel extends PluginPanel
 				@Override
 				public void mouseEntered(MouseEvent ev)
 				{
-					if (disabled(ev))
+					if (!active)
 					{
-						setBackground(ColorScheme.DARK_GRAY_COLOR);
+						setBackground(ColorScheme.DARK_GRAY_HOVER_COLOR);
 					}
 				}
 
 				@Override
 				public void mouseExited(MouseEvent ev)
 				{
-					if (disabled(ev))
-					{
-						setBackground(ColorScheme.DARKER_GRAY_COLOR);
-					}
+					setBackground(active ? Theme.getActive().getSurfaceRaised() : ColorScheme.DARKER_GRAY_COLOR);
 				}
 
-				private boolean disabled(MouseEvent ev)
+				private boolean interactive(MouseEvent ev)
 				{
 					Component target = ev.getComponent();
-					if (target instanceof JButton)
-					{
-						return !target.isEnabled();
-					}
 					if (target instanceof JTextField)
 					{
-						return !((JTextField) target).isEditable();
+						return ((JTextField) target).isEditable();
 					}
-					return true;
+					return target instanceof JButton;
 				}
 			};
-			addMouseListener(expandListener);
-			addMouseMotionListener(expandListener);
-			name.addMouseListener(expandListener);
-			name.addMouseMotionListener(expandListener);
-			activate.addMouseListener(expandListener);
-			activate.addMouseMotionListener(expandListener);
+			addMouseListener(clickListener);
+			addMouseMotionListener(clickListener);
+			name.addMouseListener(clickListener);
+			name.addMouseMotionListener(clickListener);
+			syncBadge.addMouseListener(clickListener);
+			syncBadge.addMouseMotionListener(clickListener);
+			defaultBadge.addMouseListener(clickListener);
+			defaultBadge.addMouseMotionListener(clickListener);
 
 			setActive(isActive);
-			setExpanded(prev != null && prev.expanded);
+		}
+
+		private JPopupMenu buildActionsMenu(boolean rsProfileDefault, boolean limited)
+		{
+			JPopupMenu menu = new JPopupMenu();
+
+			JMenuItem rename = new JMenuItem("Rename");
+			rename.addActionListener(ev -> startRenaming());
+			menu.add(rename);
+
+			JMenuItem duplicate = new JMenuItem("Duplicate");
+			duplicate.setEnabled(!limited);
+			duplicate.addActionListener(ev -> cloneProfile(profile));
+			menu.add(duplicate);
+
+			JMenuItem export = new JMenuItem("Export...");
+			export.addActionListener(ev -> exportProfileWithChooser());
+			menu.add(export);
+
+			if (configManager.getRSProfileKey() != null)
+			{
+				JMenuItem defaultForRsProfile = new JMenuItem(rsProfileDefault
+					? "Unset default for this account"
+					: "Set default for this account");
+				defaultForRsProfile.addActionListener(ev ->
+				{
+					if (rsProfileDefault)
+					{
+						unsetRsProfileDefaultProfile();
+					}
+					else
+					{
+						setRsProfileDefaultProfile(profile.getId());
+					}
+				});
+				menu.add(defaultForRsProfile);
+			}
+
+			if (sessionManager.getAccountSession() != null)
+			{
+				JMenuItem sync = new JMenuItem(profile.isSync() ? "Disable cloud sync" : "Enable cloud sync");
+				sync.addActionListener(ev -> toggleSync(profile, !profile.isSync()));
+				menu.add(sync);
+			}
+
+			menu.addSeparator();
+
+			JMenuItem delete = new JMenuItem("Delete...");
+			delete.setForeground(ColorScheme.PROGRESS_ERROR_COLOR);
+			delete.setEnabled(!active);
+			delete.setToolTipText(active ? "The active profile cannot be deleted" : null);
+			delete.addActionListener(ev ->
+			{
+				int confirm = JOptionPane.showConfirmDialog(ProfileCard.this,
+					"Are you sure you want to delete this profile?",
+					"Warning", JOptionPane.OK_CANCEL_OPTION);
+				if (confirm == 0)
+				{
+					deleteProfile(profile);
+				}
+			});
+			menu.add(delete);
+
+			return menu;
+		}
+
+		private void exportProfileWithChooser()
+		{
+			JFileChooser fileChooser = new JFileChooser();
+			fileChooser.setDialogTitle("Profile export");
+			fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("RuneLite properties", "properties"));
+			fileChooser.setAcceptAllFileFilterUsed(false);
+			fileChooser.setCurrentDirectory(lastFileChooserDirectory);
+			fileChooser.setSelectedFile(new File(fileChooser.getCurrentDirectory(), profile.getName() + ".properties"));
+			int selection = fileChooser.showSaveDialog(this);
+			if (selection == JFileChooser.APPROVE_OPTION)
+			{
+				File file = fileChooser.getSelectedFile();
+				lastFileChooserDirectory = file.getParentFile();
+				// add properties file extension
+				if (!file.getName().endsWith(".properties"))
+				{
+					file = new File(file.getParentFile(), file.getName() + ".properties");
+				}
+				exportProfile(profile, file);
+			}
 		}
 
 		void setActive(boolean active)
@@ -634,20 +573,7 @@ class ProfilePanel extends PluginPanel
 			setBorder(new MatteBorder(0, LEFT_BORDER_WIDTH, 0, 0, active
 				? ColorScheme.BRAND_ORANGE
 				: ColorScheme.DARKER_GRAY_COLOR));
-			delete.setEnabled(!active);
-			activate.setEnabled(expanded && !active);
-		}
-
-		void setExpanded(boolean expanded)
-		{
-			this.expanded = expanded;
-			buttons.setVisible(expanded);
-			activate.setEnabled(expanded && !active);
-			if (rename.isSelected())
-			{
-				stopRenaming(true);
-			}
-			revalidate();
+			setBackground(active ? Theme.getActive().getSurfaceRaised() : ColorScheme.DARKER_GRAY_COLOR);
 		}
 
 		private void startRenaming()
@@ -665,8 +591,6 @@ class ProfilePanel extends PluginPanel
 			name.setEnabled(false);
 			name.setOpaque(false);
 
-			rename.setSelected(false);
-
 			if (save)
 			{
 				renameProfile(profile.getId(), name.getText().trim());
@@ -676,6 +600,42 @@ class ProfilePanel extends PluginPanel
 				name.setText(profile.getName());
 			}
 		}
+	}
+
+	private String defaultForRsProfilesTooltip(ConfigProfile profile)
+	{
+		final List<String> defaultForRsProfiles = profile.getDefaultForRsProfiles();
+		final StringBuilder tooltip = new StringBuilder("<html>");
+		if (defaultForRsProfiles == null || defaultForRsProfiles.isEmpty())
+		{
+			tooltip.append("Default for the current RuneScape account");
+		}
+		else
+		{
+			tooltip.append("This profile is the default for the following RuneScape accounts:");
+			for (final String rsProfileKey : defaultForRsProfiles)
+			{
+				final String ign = configManager.getConfiguration(ConfigManager.RSPROFILE_GROUP, rsProfileKey, ConfigManager.RSPROFILE_DISPLAY_NAME);
+				if (Strings.isNullOrEmpty(ign))
+				{
+					continue;
+				}
+
+				final RuneScapeProfileType worldType = configManager.getConfiguration(ConfigManager.RSPROFILE_GROUP, rsProfileKey, ConfigManager.RSPROFILE_TYPE, RuneScapeProfileType.class);
+
+				tooltip.append("<br>");
+				tooltip.append(ign);
+				if (worldType != RuneScapeProfileType.STANDARD)
+				{
+					tooltip
+						.append(" (")
+						.append(Text.titleCase(worldType))
+						.append(')');
+				}
+			}
+		}
+		tooltip.append("</html>");
+		return tooltip.toString();
 	}
 
 	private void createProfile()
@@ -925,11 +885,11 @@ class ProfilePanel extends PluginPanel
 		});
 	}
 
-	private void toggleSync(ActionEvent event, ConfigProfile profile, boolean sync)
+	private void toggleSync(ConfigProfile profile, boolean sync)
 	{
 		log.info("{} sync for: {}", sync ? "Enabling" : "Disabling", profile.getName());
 		configManager.toggleSync(profile, sync);
-		((JToggleButton) event.getSource()).setToolTipText(sync ? "Disable cloud sync" : "Enable cloud sync");
+		reload();
 	}
 
 	private void handleDrag(Component component)

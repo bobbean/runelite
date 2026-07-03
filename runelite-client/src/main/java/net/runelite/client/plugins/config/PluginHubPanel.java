@@ -30,6 +30,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.google.common.html.HtmlEscapers;
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -449,6 +450,7 @@ class PluginHubPanel extends PluginPanel
 	}
 
 	private final TopLevelConfigPanel topLevelConfigPanel;
+	private final PluginListPanel pluginListPanel;
 	private final ExternalPluginManager externalPluginManager;
 	private final PluginManager pluginManager;
 	private final ExternalPluginClient externalPluginClient;
@@ -465,6 +467,7 @@ class PluginHubPanel extends PluginPanel
 	@Inject
 	PluginHubPanel(
 		TopLevelConfigPanel topLevelConfigPanel,
+		PluginListPanel pluginListPanel,
 		ExternalPluginManager externalPluginManager,
 		PluginManager pluginManager,
 		ExternalPluginClient externalPluginClient,
@@ -472,6 +475,7 @@ class PluginHubPanel extends PluginPanel
 	{
 		super(false);
 		this.topLevelConfigPanel = topLevelConfigPanel;
+		this.pluginListPanel = pluginListPanel;
 		this.externalPluginManager = externalPluginManager;
 		this.pluginManager = pluginManager;
 		this.externalPluginClient = externalPluginClient;
@@ -516,6 +520,23 @@ class PluginHubPanel extends PluginPanel
 				executor.execute(PluginHubPanel.this::filter);
 			}
 		});
+
+		// header with a back affordance — the hub is a drill-in on the plugin
+		// list muxer now, not a top-level tab
+		JButton backButton = new JButton(ConfigPanel.BACK_ICON);
+		SwingUtil.removeButtonDecorations(backButton);
+		backButton.setPreferredSize(new Dimension(22, 0));
+		backButton.setBorder(new EmptyBorder(0, 0, 0, 5));
+		backButton.setToolTipText("Back");
+		backButton.addActionListener(e -> pluginListPanel.getMuxer().popState());
+
+		JLabel headerTitle = new JLabel("Plugin Hub");
+		headerTitle.setForeground(Color.WHITE);
+
+		JPanel header = new JPanel(new BorderLayout());
+		header.setOpaque(false);
+		header.add(backButton, BorderLayout.WEST);
+		header.add(headerTitle, BorderLayout.CENTER);
 
 		JLabel externalPluginWarning = new JLabel("<html>Plugin Hub plugins are provided by third parties not affiliated with RuneLite. " +
 			"<u>Click here to learn more.</u></html>");
@@ -566,6 +587,8 @@ class PluginHubPanel extends PluginPanel
 
 			layout.setVerticalGroup(layout.createSequentialGroup()
 				.addGap(10)
+				.addComponent(header)
+				.addGap(7)
 				.addComponent(externalPluginWarning)
 				.addGap(7)
 				.addComponent(searchBar, 30, 30, 30)
@@ -573,6 +596,10 @@ class PluginHubPanel extends PluginPanel
 				.addComponent(scrollPane));
 
 			layout.setHorizontalGroup(layout.createParallelGroup()
+				.addGroup(layout.createSequentialGroup()
+					.addGap(10)
+					.addComponent(header)
+					.addGap(10))
 				.addGroup(layout.createSequentialGroup()
 					.addGap(10)
 					.addComponent(externalPluginWarning)

@@ -43,6 +43,7 @@ import java.lang.reflect.ParameterizedType;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -105,6 +106,7 @@ import net.runelite.client.ui.components.ColorJButton;
 import net.runelite.client.ui.components.TitleCaseListCellRenderer;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.ui.components.colorpicker.RuneliteColorPicker;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
@@ -183,7 +185,7 @@ class ConfigPanel extends PluginPanel
 
 		mainPanel = new FixedWidthPanel();
 		mainPanel.setBorder(new EmptyBorder(8, 10, 10, 10));
-		mainPanel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
+		mainPanel.setLayout(new DynamicGridLayout(0, 1, 0, Theme.SPACE_8));
 		mainPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 		JPanel northPanel = new FixedWidthPanel();
@@ -292,7 +294,7 @@ class ConfigPanel extends PluginPanel
 			// For whatever reason, the header extends out by a single pixel when closed. Adding a single pixel of
 			// border on the right only affects the width when closed, fixing the issue.
 			sectionHeader.setBorder(new CompoundBorder(
-				new MatteBorder(0, 0, 1, 0, ColorScheme.MEDIUM_GRAY_COLOR),
+				new MatteBorder(0, 0, 1, 0, Theme.getActive().getBorderSubtle()),
 				new EmptyBorder(0, 0, 3, 1)));
 			section.add(sectionHeader, BorderLayout.NORTH);
 
@@ -304,17 +306,19 @@ class ConfigPanel extends PluginPanel
 			sectionHeader.add(sectionToggle, BorderLayout.WEST);
 
 			String name = cs.name();
-			final JLabel sectionName = new JLabel(name);
-			sectionName.setForeground(ColorScheme.BRAND_ORANGE);
-			sectionName.setFont(FontManager.getRunescapeBoldFont());
+			// small-caps muted section label (see NAVIGATION.md §4) — same
+			// hierarchy device as the plugin list sections
+			final JLabel sectionName = new JLabel(name.toUpperCase(Locale.ROOT));
+			sectionName.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			sectionName.setFont(FontManager.getSmallFont());
 			sectionName.setToolTipText("<html>" + name + ":<br>" + cs.description() + "</html>");
 			sectionHeader.add(sectionName, BorderLayout.CENTER);
 
 			final JPanel sectionContents = new JPanel();
-			sectionContents.setLayout(new DynamicGridLayout(0, 1, 0, 5));
+			sectionContents.setLayout(new DynamicGridLayout(0, 1, 0, Theme.SPACE_8));
 			sectionContents.setMinimumSize(new Dimension(PANEL_WIDTH, 0));
 			sectionContents.setBorder(new CompoundBorder(
-				new MatteBorder(0, 0, 1, 0, ColorScheme.MEDIUM_GRAY_COLOR),
+				new MatteBorder(0, 0, 1, 0, Theme.getActive().getBorderSubtle()),
 				new EmptyBorder(BORDER_OFFSET, 0, BORDER_OFFSET, 0)));
 			sectionContents.setVisible(isOpen);
 			section.add(sectionContents, BorderLayout.SOUTH);
@@ -420,7 +424,11 @@ class ConfigPanel extends PluginPanel
 
 		topLevelPanels.values().forEach(mainPanel::add);
 
-		JButton resetButton = new JButton("Reset");
+		// destructive styling + separation from the config items; the header
+		// back arrow is the only Back affordance now, so Reset has no misclick
+		// neighbor
+		JButton resetButton = new JButton("Reset to defaults...");
+		resetButton.setForeground(ColorScheme.PROGRESS_ERROR_COLOR);
 		resetButton.addActionListener((e) ->
 		{
 			final int result = JOptionPane.showOptionDialog(resetButton, "Are you sure you want to reset this plugin's configuration?",
@@ -441,11 +449,12 @@ class ConfigPanel extends PluginPanel
 				rebuild();
 			}
 		});
-		mainPanel.add(resetButton);
 
-		JButton backButton = new JButton("Back");
-		backButton.addActionListener(e -> pluginList.getMuxer().popState());
-		mainPanel.add(backButton);
+		JPanel resetRow = new JPanel(new BorderLayout());
+		resetRow.setOpaque(false);
+		resetRow.setBorder(new EmptyBorder(Theme.SPACE_16, 0, 0, 0));
+		resetRow.add(resetButton, BorderLayout.CENTER);
+		mainPanel.add(resetRow);
 
 		revalidate();
 	}

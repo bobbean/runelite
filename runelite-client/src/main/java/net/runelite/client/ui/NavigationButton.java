@@ -38,7 +38,7 @@ import lombok.Value;
 @Builder
 public class NavigationButton
 {
-	static final Comparator<NavigationButton> COMPARATOR = Comparator.comparing(NavigationButton::getPriority)
+	public static final Comparator<NavigationButton> COMPARATOR = Comparator.comparing(NavigationButton::getPriority)
 		.thenComparing(NavigationButton::getTooltip);
 
 	/**
