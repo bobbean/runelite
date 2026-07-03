@@ -2,9 +2,8 @@
   <configuration default="false" name="RuneLite" type="Application" factoryName="Application">
     <option name="MAIN_CLASS_NAME" value="net.runelite.client.RuneLite" />
     <module name="runelite.client.main" />
-    <!-- RuneLite's injected client and developer-mode check both require assertions enabled -->
-    <option name="VM_PARAMETERS" value="-ea" />
     <option name="PROGRAM_PARAMETERS" value="--developer-mode" />
+    <option name="VM_PARAMETERS" value="-ea -Drunelite.pluginhub.version=1.12.31" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>
