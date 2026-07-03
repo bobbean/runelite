@@ -120,6 +120,7 @@ import net.runelite.client.input.MouseListener;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.ui.laf.RuneLiteLAF;
 import net.runelite.client.ui.laf.RuneLiteRootPaneUI;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.HotkeyListener;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
@@ -325,6 +326,10 @@ public class ClientUI
 		{
 			// Set some sensible swing defaults
 			setupDefaults();
+
+			// Resolve the theme before the LAF installs — RuneLiteLAF exports the
+			// ColorScheme aliases into FlatLaf variables at construction time
+			Theme.install(Theme.dark(config.accentColor()));
 
 			RuneLiteLAF.setup();
 

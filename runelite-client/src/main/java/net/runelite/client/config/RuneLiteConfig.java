@@ -30,6 +30,7 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import net.runelite.api.Constants;
 import net.runelite.client.ui.ContainableFrame;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.ui.overlay.components.ComponentConstants;
 import net.runelite.client.util.OSType;
 
@@ -58,6 +59,25 @@ public interface RuneLiteConfig extends Config
 		position = 2
 	)
 	String overlaySettings = "overlaySettings";
+
+	@ConfigSection(
+		name = "Appearance",
+		description = "Settings relating to the client's theme.",
+		position = 3
+	)
+	String appearanceSettings = "appearanceSettings";
+
+	@ConfigItem(
+		keyName = "accentColor",
+		name = "Accent color",
+		description = "The accent color used across the client interface. Requires a restart to take effect.",
+		position = 10,
+		section = appearanceSettings
+	)
+	default Color accentColor()
+	{
+		return Theme.DEFAULT_ACCENT;
+	}
 
 	@ConfigItem(
 		keyName = "gameSize",

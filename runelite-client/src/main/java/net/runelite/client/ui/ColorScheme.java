@@ -25,49 +25,85 @@
 package net.runelite.client.ui;
 
 import java.awt.Color;
+import net.runelite.client.ui.theme.Theme;
 
 /**
- * This class serves to hold commonly used UI colors.
+ * Compat shim: these constants are delegating aliases for the active
+ * {@link Theme}'s tokens (see docs/ui-rework/design/TOKENS.md for the mapping).
+ * They are reassigned only by {@link Theme#install} before the LAF loads —
+ * treat them as read-only. New code should read the {@link Theme} directly.
  */
 public class ColorScheme
 {
-	/* The orange color used for the branding's accents */
-	public static final Color BRAND_ORANGE = new Color(220, 138, 0);
+	/* The accent color — user-adjustable, RuneLite orange by default */
+	public static Color BRAND_ORANGE;
 
-	/* The orange color used for the branding's accents, with lowered opacity */
-	public static final Color BRAND_ORANGE_TRANSPARENT = new Color(220, 138, 0, 120);
+	/* The accent color, with lowered opacity */
+	public static Color BRAND_ORANGE_TRANSPARENT;
 
-	public static final Color DARKER_GRAY_COLOR = new Color(30, 30, 30);
-	public static final Color DARK_GRAY_COLOR = new Color(40, 40, 40);
-	public static final Color MEDIUM_GRAY_COLOR = new Color(77, 77, 77);
-	public static final Color LIGHT_GRAY_COLOR = new Color(165, 165, 165);
+	public static Color DARKER_GRAY_COLOR;
+	public static Color DARK_GRAY_COLOR;
+	public static Color MEDIUM_GRAY_COLOR;
+	public static Color LIGHT_GRAY_COLOR;
 
-	public static final Color TEXT_COLOR = new Color(198, 198, 198);
-	public static final Color CONTROL_COLOR = new Color(30, 30, 30);
-	public static final Color BORDER_COLOR = new Color(23, 23, 23);
+	public static Color TEXT_COLOR;
+	public static Color CONTROL_COLOR;
+	public static Color BORDER_COLOR;
 
-	public static final Color DARKER_GRAY_HOVER_COLOR = new Color(60, 60, 60);
-	public static final Color DARK_GRAY_HOVER_COLOR = new Color(35, 35, 35);
+	public static Color DARKER_GRAY_HOVER_COLOR;
+	public static Color DARK_GRAY_HOVER_COLOR;
 
 	/* The color for the green progress bar (used in ge offers, farming tracker, etc)*/
-	public static final Color PROGRESS_COMPLETE_COLOR = new Color(55, 240, 70);
+	public static Color PROGRESS_COMPLETE_COLOR;
 
 	/* The color for the red progress bar (used in ge offers, farming tracker, etc)*/
-	public static final Color PROGRESS_ERROR_COLOR = new Color(230, 30, 30);
+	public static Color PROGRESS_ERROR_COLOR;
 
 	/* The color for the orange progress bar (used in ge offers, farming tracker, etc)*/
-	public static final Color PROGRESS_INPROGRESS_COLOR = new Color(230, 150, 30);
+	public static Color PROGRESS_INPROGRESS_COLOR;
 
 	/* The color for the price indicator in the ge search results */
-	public static final Color GRAND_EXCHANGE_PRICE = new Color(110, 225, 110);
+	public static Color GRAND_EXCHANGE_PRICE;
 
 	/* The color for the high alch indicator in the ge search results */
-	public static final Color GRAND_EXCHANGE_ALCH = new Color(240, 207, 123);
+	public static Color GRAND_EXCHANGE_ALCH;
 
 	/* The color for the limit indicator in the ge search results */
-	public static final Color GRAND_EXCHANGE_LIMIT = new Color(50, 160, 250);
+	public static Color GRAND_EXCHANGE_LIMIT;
 
 	/* The background color of the scrollbar's track */
-	public static final Color SCROLL_TRACK_COLOR = new Color(25, 25, 25);
+	public static Color SCROLL_TRACK_COLOR;
 
+	static
+	{
+		applyTheme(Theme.getActive());
+	}
+
+	public static void applyTheme(Theme theme)
+	{
+		BRAND_ORANGE = theme.getAccent();
+		BRAND_ORANGE_TRANSPARENT = theme.getAccentMuted();
+
+		DARKER_GRAY_COLOR = theme.getSurfaceSunken();
+		DARK_GRAY_COLOR = theme.getSurface();
+		MEDIUM_GRAY_COLOR = theme.getSelection();
+		LIGHT_GRAY_COLOR = theme.getTextMuted();
+
+		TEXT_COLOR = theme.getTextPrimary();
+		CONTROL_COLOR = theme.getControl();
+		BORDER_COLOR = theme.getBorder();
+
+		DARKER_GRAY_HOVER_COLOR = theme.getSurfaceSunkenHover();
+		DARK_GRAY_HOVER_COLOR = theme.getSurfaceHover();
+
+		PROGRESS_COMPLETE_COLOR = theme.getSuccess();
+		PROGRESS_ERROR_COLOR = theme.getError();
+		PROGRESS_INPROGRESS_COLOR = theme.getWarning();
+
+		GRAND_EXCHANGE_PRICE = theme.getPositive();
+		GRAND_EXCHANGE_ALCH = theme.getValue();
+		GRAND_EXCHANGE_LIMIT = theme.getInfo();
+
+		SCROLL_TRACK_COLOR = theme.getScrollTrack();
+	}
 }

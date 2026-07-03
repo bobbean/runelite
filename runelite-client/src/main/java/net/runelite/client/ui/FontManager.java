@@ -42,12 +42,16 @@ import javax.swing.text.StyleContext;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
+import net.runelite.client.ui.theme.Theme;
 
 @Slf4j
 public class FontManager
 {
 	private static final List<String> customFontFamilies = new ArrayList<>();
 
+	// legacy 16px fonts — still drawn onto the game canvas by overlays
+	// (OverlayPanel, InfoBoxComponent, many plugin overlays), which keep
+	// their current look by decision; do not resize these
 	@Getter
 	private static final Font runescapeFont;
 	@Getter
@@ -59,6 +63,17 @@ public class FontManager
 	@Getter
 	private static final Font defaultBoldFont;
 
+	// theme typography roles (TOKENS.md) — the client chrome fonts;
+	// titleFont doubles as the bodyBold role
+	@Getter
+	private static final Font titleFont;
+	@Getter
+	private static final Font bodyFont;
+	@Getter
+	private static final Font smallFont;
+	@Getter
+	private static final Font defaultUIFont;
+
 	static
 	{
 		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
@@ -67,17 +82,22 @@ public class FontManager
 			InputStream inRunescapeBold = FontManager.class.getResourceAsStream("runescape_bold.ttf");
 			InputStream inRunescapeSmall = FontManager.class.getResourceAsStream("runescape_small.ttf"))
 		{
-			Font font = Font.createFont(Font.TRUETYPE_FONT, inRunescape);
-			Font boldFont = Font.createFont(Font.TRUETYPE_FONT, inRunescapeBold);
-			Font smallFont = Font.createFont(Font.TRUETYPE_FONT, inRunescapeSmall);
+			Font loadedFont = Font.createFont(Font.TRUETYPE_FONT, inRunescape);
+			Font loadedBoldFont = Font.createFont(Font.TRUETYPE_FONT, inRunescapeBold);
+			Font loadedSmallFont = Font.createFont(Font.TRUETYPE_FONT, inRunescapeSmall);
 
-			ge.registerFont(font);
-			ge.registerFont(boldFont);
-			ge.registerFont(smallFont);
+			ge.registerFont(loadedFont);
+			ge.registerFont(loadedBoldFont);
+			ge.registerFont(loadedSmallFont);
 
-			runescapeFont = getFallbackFont(font.getFamily(), Font.PLAIN, 16);
-			runescapeBoldFont = getFallbackFont(boldFont.getFamily(), Font.BOLD, 16);
-			runescapeSmallFont = getFallbackFont(smallFont.getFamily(), Font.PLAIN, 16);
+			runescapeFont = getFallbackFont(loadedFont.getFamily(), Font.PLAIN, 16);
+			runescapeBoldFont = getFallbackFont(loadedBoldFont.getFamily(), Font.BOLD, 16);
+			runescapeSmallFont = getFallbackFont(loadedSmallFont.getFamily(), Font.PLAIN, 16);
+
+			titleFont = getFallbackFont(loadedBoldFont.getFamily(), Font.BOLD, Theme.FONT_SIZE_TITLE);
+			bodyFont = getFallbackFont(loadedSmallFont.getFamily(), Font.PLAIN, Theme.FONT_SIZE_BODY);
+			smallFont = getFallbackFont(loadedSmallFont.getFamily(), Font.PLAIN, Theme.FONT_SIZE_SMALL);
+			defaultUIFont = getFallbackFont(loadedFont.getFamily(), Font.PLAIN, Theme.FONT_SIZE_BODY);
 		}
 		catch (FontFormatException ex)
 		{

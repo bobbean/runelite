@@ -49,6 +49,7 @@ import javax.swing.border.EmptyBorder;
 import lombok.Getter;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
 
@@ -71,7 +72,7 @@ class PluginListItem extends JPanel implements SearchablePlugin
 	static
 	{
 		BufferedImage onStar = ImageUtil.loadImageResource(ConfigPanel.class, "star_on.png");
-		ON_STAR = new ImageIcon(onStar);
+		ON_STAR = new ImageIcon(Theme.getActive().accentize(onStar));
 
 		BufferedImage offStar = ImageUtil.luminanceScale(
 			ImageUtil.grayscaleImage(onStar),
