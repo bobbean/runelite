@@ -55,6 +55,7 @@ public class SidebarPane extends JPanel
 	private static final String CONFIG_PANEL_WIDTH = "sidebarPanelWidth";
 	private static final String CONFIG_PINNED = "sidebarPinnedPanels";
 	private static final String CONFIG_HIDDEN = "sidebarHiddenPanels";
+	private static final String CONFIG_ORDER = "sidebarPanelOrder";
 
 	/** Minimum host width: the classic panel width plus its scrollbar gutter. */
 	public static final int MIN_PANEL_WIDTH = PluginPanel.PANEL_WIDTH + PluginPanel.SCROLLBAR_WIDTH;
@@ -86,7 +87,7 @@ public class SidebarPane extends JPanel
 		Integer savedWidth = configManager.getConfiguration(CONFIG_GROUP, CONFIG_PANEL_WIDTH, Integer.class);
 		panelWidth = clampWidth(savedWidth == null ? MIN_PANEL_WIDTH : savedWidth);
 
-		rail = new SidebarRail(this::select, configListStore(CONFIG_PINNED), configListStore(CONFIG_HIDDEN));
+		rail = new SidebarRail(this::select, configListStore(CONFIG_PINNED), configListStore(CONFIG_HIDDEN), configListStore(CONFIG_ORDER));
 
 		hostLayout = new CardLayout();
 		host = new JPanel(hostLayout);

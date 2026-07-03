@@ -28,11 +28,11 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeSet;
 import java.util.function.Consumer;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -40,22 +40,24 @@ import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.MenuSelectionManager;
 import javax.swing.SwingUtilities;
-import javax.swing.event.PopupMenuEvent;
-import javax.swing.event.PopupMenuListener;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ImageUtil;
 
 /**
  * The grouped icon rail: Configuration on top, then user-pinned panels, then
- * everything else; icons that don't fit (and hidden icons) collapse into a
- * labeled overflow popup. Window controls arrive as a trailing component below
- * a strong divider (see docs/ui-rework/design/NAVIGATION.md §1).
+ * everything else. When the stack outgrows the rail height it wraps into
+ * additional columns (like the old tabbed sidebar); hidden icons (and icons
+ * that still don't fit) collapse into a labeled overflow popup. Window
+ * controls arrive as a trailing component below a strong divider (see
+ * docs/ui-rework/design/NAVIGATION.md §1).
  *
- * Dragging is spatial pin management: drag within the pinned zone to reorder,
- * drag an icon into the pinned zone to pin it, drag a pinned icon below the
- * divider to unpin. The unpinned zone keeps its automatic order.
+ * Dragging is spatial pin management: drag within a zone to reorder it, drag
+ * an icon across the divider to pin or unpin it. Both zone orders persist.
+ * Extra columns fill right-to-left, keeping the first column against the
+ * window edge.
  */
 class SidebarRail extends JPanel
 {
@@ -76,7 +78,7 @@ class SidebarRail extends JPanel
 
 	private RailButton configButton;
 	private final List<RailButton> pinned = new ArrayList<>();
-	private final TreeSet<RailButton> others = new TreeSet<>((a, b) -> NavigationButton.COMPARATOR.compare(a.getNavBtn(), b.getNavBtn()));
+	private final List<RailButton> others = new ArrayList<>();
 	private final List<RailButton> hidden = new ArrayList<>();
 	private final JButton overflowButton;
 	private final List<RailButton> overflowed = new ArrayList<>();
@@ -85,24 +87,32 @@ class SidebarRail extends JPanel
 	private final Consumer<NavigationButton> selectHandler;
 	private final ListStore pinStore;
 	private final ListStore hiddenStore;
+	private final ListStore orderStore;
 
 	// layout results, consumed by paintComponent and drag handling
-	private final List<Integer> dividerYs = new ArrayList<>();
+	private final List<Rectangle> dividers = new ArrayList<>();
 	private int strongDividerY = -1;
 	private final List<RailButton> laidOut = new ArrayList<>();
+	// columns the stack needs at the current height; getPreferredSize turns
+	// this into width, so the rail widens instead of overflowing
+	private int columns = 1;
 
 	// drag state
 	private RailButton dragButton;
 	private boolean dragActive;
 	private Point dragStart;
 	private int dragInsertIndex = -1;
+	private boolean dragToPinned;
+	private int dragBoundary;
+	private int dragIndicatorX = -1;
 	private int dragIndicatorY = -1;
 
-	SidebarRail(Consumer<NavigationButton> selectHandler, ListStore pinStore, ListStore hiddenStore)
+	SidebarRail(Consumer<NavigationButton> selectHandler, ListStore pinStore, ListStore hiddenStore, ListStore orderStore)
 	{
 		this.selectHandler = selectHandler;
 		this.pinStore = pinStore;
 		this.hiddenStore = hiddenStore;
+		this.orderStore = orderStore;
 
 		setOpaque(true);
 		setBackground(Theme.getActive().getSurfaceSunken());
@@ -134,21 +144,14 @@ class SidebarRail extends JPanel
 			selectHandler.accept(btn.isActive() ? null : navBtn);
 		});
 
+		installPopupHandler(btn);
+
 		if (isConfigEntry(navBtn))
 		{
 			configButton = btn;
-			// no pin/hide for the config entry; only plugin-provided popup items
-			if (navBtn.getPopup() != null)
-			{
-				btn.setComponentPopupMenu(buildManagedMenu(btn));
-			}
 		}
 		else
 		{
-			// managed popup (setComponentPopupMenu) so show/dismiss is handled
-			// by Swing — manually shown heavyweight popups don't reliably
-			// auto-close over the game canvas
-			btn.setComponentPopupMenu(buildManagedMenu(btn));
 			installDragHandler(btn);
 
 			if (hiddenStore.load().contains(navBtn.getTooltip()))
@@ -166,6 +169,7 @@ class SidebarRail extends JPanel
 			else
 			{
 				others.add(btn);
+				sortOthers();
 			}
 		}
 
@@ -251,29 +255,37 @@ class SidebarRail extends JPanel
 
 	// ===== context menu =====
 
-	private JPopupMenu buildManagedMenu(RailButton btn)
+	private void installPopupHandler(RailButton btn)
 	{
-		JPopupMenu menu = new JPopupMenu();
-		menu.addPopupMenuListener(new PopupMenuListener()
+		btn.addMouseListener(new MouseAdapter()
 		{
 			@Override
-			public void popupMenuWillBecomeVisible(PopupMenuEvent e)
+			public void mousePressed(MouseEvent e)
 			{
-				menu.removeAll();
+				maybeShow(e);
+			}
+
+			@Override
+			public void mouseReleased(MouseEvent e)
+			{
+				maybeShow(e);
+			}
+
+			private void maybeShow(MouseEvent e)
+			{
+				if (!e.isPopupTrigger())
+				{
+					return;
+				}
+
+				JPopupMenu menu = new JPopupMenu();
 				populateContextMenu(menu, btn);
-			}
-
-			@Override
-			public void popupMenuWillBecomeInvisible(PopupMenuEvent e)
-			{
-			}
-
-			@Override
-			public void popupMenuCanceled(PopupMenuEvent e)
-			{
+				if (menu.getComponentCount() > 0)
+				{
+					menu.show(btn, e.getX(), e.getY());
+				}
 			}
 		});
-		return menu;
 	}
 
 	private void populateContextMenu(JPopupMenu menu, RailButton btn)
@@ -320,6 +332,7 @@ class SidebarRail extends JPanel
 		{
 			pinned.remove(btn);
 			others.add(btn);
+			sortOthers();
 		}
 
 		persistPins();
@@ -343,12 +356,37 @@ class SidebarRail extends JPanel
 		{
 			hidden.remove(btn);
 			others.add(btn);
+			sortOthers();
 		}
 
 		persistPins();
 		persistHidden();
 		revalidate();
 		repaint();
+	}
+
+	/**
+	 * Saved order first, then anything unsaved in the automatic order. Until
+	 * the user drag-reorders (nothing saved yet) this is the old automatic
+	 * COMPARATOR order.
+	 */
+	private void sortOthers()
+	{
+		List<String> order = orderStore.load();
+		others.sort((a, b) ->
+		{
+			int ia = order.indexOf(a.getNavBtn().getTooltip());
+			int ib = order.indexOf(b.getNavBtn().getTooltip());
+			if (ia >= 0 && ib >= 0)
+			{
+				return Integer.compare(ia, ib);
+			}
+			if (ia >= 0 || ib >= 0)
+			{
+				return ia >= 0 ? -1 : 1;
+			}
+			return NavigationButton.COMPARATOR.compare(a.getNavBtn(), b.getNavBtn());
+		});
 	}
 
 	private void persistPins()
@@ -369,6 +407,16 @@ class SidebarRail extends JPanel
 			names.add(b.getNavBtn().getTooltip());
 		}
 		hiddenStore.save(names);
+	}
+
+	private void persistOrder()
+	{
+		List<String> names = new ArrayList<>();
+		for (RailButton b : others)
+		{
+			names.add(b.getNavBtn().getTooltip());
+		}
+		orderStore.save(names);
 	}
 
 	// ===== overflow =====
@@ -396,14 +444,28 @@ class SidebarRail extends JPanel
 				NavigationButton navBtn = btn.getNavBtn();
 				JMenu sub = new JMenu(navBtn.getTooltip());
 				sub.setIcon(railMenuIcon(navBtn));
-
-				JMenuItem open = new JMenuItem("Open");
-				open.addActionListener(ev -> selectHandler.accept(navBtn));
-				sub.add(open);
+				// clicking the entry itself opens the panel; the submenu only
+				// holds the restore actions
+				sub.addMouseListener(new MouseAdapter()
+				{
+					@Override
+					public void mouseClicked(MouseEvent e)
+					{
+						if (SwingUtilities.isLeftMouseButton(e))
+						{
+							MenuSelectionManager.defaultManager().clearSelectedPath();
+							selectHandler.accept(btn.isActive() ? null : navBtn);
+						}
+					}
+				});
 
 				JMenuItem show = new JMenuItem("Show in sidebar");
 				show.addActionListener(ev -> setHidden(btn, false));
 				sub.add(show);
+
+				JMenuItem pin = new JMenuItem("Pin");
+				pin.addActionListener(ev -> setPinned(btn, true));
+				sub.add(pin);
 
 				menu.add(sub);
 			}
@@ -449,7 +511,7 @@ class SidebarRail extends JPanel
 
 				if (dragActive)
 				{
-					updateDragTarget(p.y);
+					updateDragTarget(p);
 					repaint();
 				}
 			}
@@ -466,6 +528,7 @@ class SidebarRail extends JPanel
 				dragActive = false;
 				dragButton = null;
 				dragInsertIndex = -1;
+				dragIndicatorX = -1;
 				dragIndicatorY = -1;
 				repaint();
 			}
@@ -474,12 +537,17 @@ class SidebarRail extends JPanel
 		btn.addMouseMotionListener(adapter);
 	}
 
-	private void updateDragTarget(int y)
+	private void updateDragTarget(Point p)
 	{
+		// laidOut is in column-major visual order with columns filling
+		// right-to-left: a button precedes the pointer if it sits in an
+		// earlier (further right) column, or above it in the same one
+		int x = Math.max(0, Math.min(p.x, getWidth() - 1));
 		int idx = 0;
 		for (RailButton b : laidOut)
 		{
-			if (y > b.getY() + b.getHeight() / 2)
+			if (x < b.getX()
+				|| (x < b.getX() + RailButton.WIDTH && p.y > b.getY() + b.getHeight() / 2))
 			{
 				idx++;
 			}
@@ -490,17 +558,46 @@ class SidebarRail extends JPanel
 		}
 		dragInsertIndex = idx;
 
+		// which zone the drop lands in; the boundary index itself is ambiguous
+		// (end of pinned vs. front of others) and resolves geometrically
+		int laidPinned = 0;
+		while (laidPinned < laidOut.size() && pinned.contains(laidOut.get(laidPinned)))
+		{
+			laidPinned++;
+		}
+		dragBoundary = laidPinned;
+
+		if (idx != laidPinned)
+		{
+			dragToPinned = idx < laidPinned;
+		}
+		else if (pinned.isEmpty() || laidPinned >= laidOut.size())
+		{
+			// the top slot pins the first item; a drop past everything with no
+			// unpinned icons visible appends to the pins
+			dragToPinned = true;
+		}
+		else
+		{
+			RailButton firstOther = laidOut.get(laidPinned);
+			boolean inOthersColumn = x >= firstOther.getX() && x < firstOther.getX() + RailButton.WIDTH;
+			dragToPinned = !inOthersColumn || p.y <= firstOther.getY() - DIVIDER_H / 2;
+		}
+
 		if (laidOut.isEmpty())
 		{
 			dragIndicatorY = -1;
 		}
 		else if (idx < laidOut.size())
 		{
-			dragIndicatorY = laidOut.get(idx).getY() - 2;
+			RailButton next = laidOut.get(idx);
+			dragIndicatorX = next.getX();
+			dragIndicatorY = next.getY() - 2;
 		}
 		else
 		{
 			RailButton last = laidOut.get(laidOut.size() - 1);
+			dragIndicatorX = last.getX();
 			dragIndicatorY = last.getY() + last.getHeight() + 1;
 		}
 	}
@@ -512,39 +609,33 @@ class SidebarRail extends JPanel
 			return;
 		}
 
-		int boundary = pinned.size();
-		boolean wasPinned = pinned.contains(btn);
-
-		if (wasPinned)
+		if (dragToPinned)
 		{
+			int target = Math.min(index, pinned.size());
 			int current = pinned.indexOf(btn);
-			if (index <= boundary)
+			if (current >= 0 && current < target)
 			{
-				// reorder within the pinned zone
-				int target = Math.min(index, pinned.size());
-				if (current < target)
-				{
-					target--;
-				}
-				pinned.remove(btn);
-				pinned.add(Math.max(0, Math.min(target, pinned.size())), btn);
+				target--;
 			}
-			else
-			{
-				// dragged below the divider: unpin
-				pinned.remove(btn);
-				others.add(btn);
-			}
-		}
-		else if (index <= boundary)
-		{
-			// dragged into the pinned zone: pin at position
+			pinned.remove(btn);
 			others.remove(btn);
-			pinned.add(Math.max(0, Math.min(index, pinned.size())), btn);
+			pinned.add(Math.max(0, Math.min(target, pinned.size())), btn);
 		}
-		// unpinned to unpinned zone: automatic order, nothing to do
+		else
+		{
+			int target = Math.max(0, index - dragBoundary);
+			int current = others.indexOf(btn);
+			if (current >= 0 && current < target)
+			{
+				target--;
+			}
+			pinned.remove(btn);
+			others.remove(btn);
+			others.add(Math.max(0, Math.min(target, others.size())), btn);
+		}
 
 		persistPins();
+		persistOrder();
 		revalidate();
 		repaint();
 	}
@@ -555,12 +646,13 @@ class SidebarRail extends JPanel
 	public Dimension getPreferredSize()
 	{
 		int visible = (configButton != null ? 1 : 0) + pinned.size() + others.size();
-		int h = PAD * 2 + stackHeight(visible);
+		int perColumn = (visible + columns - 1) / Math.max(1, columns);
+		int h = PAD * 2 + stackHeight(perColumn);
 		if (trailing != null)
 		{
 			h += DIVIDER_H + trailing.getPreferredSize().height;
 		}
-		return new Dimension(RailButton.WIDTH, h);
+		return new Dimension(RailButton.WIDTH * columns, h);
 	}
 
 	@Override
@@ -588,7 +680,7 @@ class SidebarRail extends JPanel
 	@Override
 	public void doLayout()
 	{
-		dividerYs.clear();
+		dividers.clear();
 		strongDividerY = -1;
 		overflowed.clear();
 		laidOut.clear();
@@ -611,61 +703,85 @@ class SidebarRail extends JPanel
 			strongDividerY = bottom + DIVIDER_H / 2;
 		}
 
-		int y = PAD;
-
-		if (configButton != null)
-		{
-			configButton.setBounds(0, y, w, RailButton.HEIGHT);
-			y += RailButton.HEIGHT + GAP;
-			dividerYs.add(y + DIVIDER_H / 2 - GAP);
-			y += DIVIDER_H;
-		}
-
 		List<RailButton> rest = new ArrayList<>(pinned);
 		int pinnedCount = rest.size();
 		rest.addAll(others);
 
-		// how many of the remaining buttons fit, keeping room for the overflow
-		// button when not all fit (the overflow button is also needed when
-		// anything is hidden)
-		int avail = bottom - y;
-		int fit = rest.size();
-		boolean needOverflowForHidden = !hidden.isEmpty();
-		if (stackNeeded(rest.size(), pinnedCount) + (needOverflowForHidden ? RailButton.HEIGHT + GAP : 0) > avail)
+		// when the single-column stack outgrows the rail, request another
+		// column: getPreferredSize widens and the parent re-lays us out
+		int needed = columnsNeeded(rest.size(), bottom);
+		if (needed != columns)
 		{
-			while (fit > 0 && stackNeeded(fit, pinnedCount) + RailButton.HEIGHT + GAP > avail)
-			{
-				fit--;
-			}
+			columns = needed;
+			SwingUtilities.invokeLater(this::revalidate);
+		}
+
+		int colsAvail = Math.max(1, w / RailButton.WIDTH);
+		int col = 0;
+		int y = PAD;
+		boolean pendingDivider = false;
+
+		if (configButton != null)
+		{
+			configButton.setBounds(colX(col), y, RailButton.WIDTH, RailButton.HEIGHT);
+			y += RailButton.HEIGHT + GAP;
+			pendingDivider = true;
 		}
 
 		for (int i = 0; i < rest.size(); i++)
 		{
 			RailButton btn = rest.get(i);
-			if (i == pinnedCount && pinnedCount > 0)
+			pendingDivider |= i == pinnedCount && pinnedCount > 0;
+
+			int need = RailButton.HEIGHT + (pendingDivider ? DIVIDER_H : 0);
+			if (y + need > bottom)
 			{
-				dividerYs.add(y + DIVIDER_H / 2 - GAP);
-				y += DIVIDER_H;
+				if (col + 1 < colsAvail)
+				{
+					col++;
+					y = PAD;
+					pendingDivider = false; // the wrap itself separates the groups
+				}
+				else
+				{
+					btn.setVisible(false);
+					overflowed.add(btn);
+					continue;
+				}
 			}
 
-			if (i < fit)
+			if (pendingDivider)
 			{
-				btn.setVisible(true);
-				btn.setBounds(0, y, w, RailButton.HEIGHT);
-				laidOut.add(btn);
-				y += RailButton.HEIGHT + GAP;
+				dividers.add(new Rectangle(colX(col) + 6, y + DIVIDER_H / 2 - GAP, RailButton.WIDTH - 12, 1));
+				y += DIVIDER_H;
+				pendingDivider = false;
 			}
-			else
-			{
-				btn.setVisible(false);
-				overflowed.add(btn);
-			}
+
+			btn.setVisible(true);
+			btn.setBounds(colX(col), y, RailButton.WIDTH, RailButton.HEIGHT);
+			laidOut.add(btn);
+			y += RailButton.HEIGHT + GAP;
 		}
 
 		if (!overflowed.isEmpty() || !hidden.isEmpty())
 		{
+			if (y + RailButton.HEIGHT > bottom && col + 1 < colsAvail)
+			{
+				col++;
+				y = PAD;
+			}
+			if (y + RailButton.HEIGHT > bottom && !laidOut.isEmpty())
+			{
+				// no room left: evict the last icon into the overflow to make
+				// space for the overflow button itself
+				RailButton evicted = laidOut.remove(laidOut.size() - 1);
+				evicted.setVisible(false);
+				overflowed.add(0, evicted);
+				col = (w - evicted.getX()) / RailButton.WIDTH - 1;
+				y = evicted.getY();
+			}
 			overflowButton.setVisible(true);
-			overflowButton.setBounds(0, y, w, RailButton.HEIGHT);
+			overflowButton.setBounds(colX(col), y, RailButton.WIDTH, RailButton.HEIGHT);
 		}
 		else
 		{
@@ -673,14 +789,29 @@ class SidebarRail extends JPanel
 		}
 	}
 
-	private static int stackNeeded(int buttons, int pinnedCount)
+	/** Columns fill right-to-left so the first column hugs the window edge. */
+	private int colX(int col)
 	{
-		int h = buttons * (RailButton.HEIGHT + GAP);
-		if (pinnedCount > 0 && buttons > pinnedCount)
+		return getWidth() - (col + 1) * RailButton.WIDTH;
+	}
+
+	/**
+	 * Columns the full stack needs at this rail height, capped at 4. Slightly
+	 * conservative: dividers dropped at column wraps are still counted.
+	 */
+	private int columnsNeeded(int restCount, int bottom)
+	{
+		int colH = bottom - PAD;
+		if (colH < RailButton.HEIGHT)
 		{
-			h += DIVIDER_H;
+			return 1;
 		}
-		return h;
+
+		int buttons = (configButton != null ? 1 : 0) + restCount
+			+ (hidden.isEmpty() ? 0 : 1); // the overflow button
+		int total = buttons * (RailButton.HEIGHT + GAP) + 2 * DIVIDER_H;
+		int cols = (total + colH + GAP - 1) / (colH + GAP);
+		return Math.max(1, Math.min(4, cols));
 	}
 
 	@Override
@@ -690,9 +821,9 @@ class SidebarRail extends JPanel
 
 		Theme theme = Theme.getActive();
 		g.setColor(theme.getBorderSubtle());
-		for (int y : dividerYs)
+		for (Rectangle r : dividers)
 		{
-			g.fillRect(6, y, getWidth() - 12, 1);
+			g.fillRect(r.x, r.y, r.width, r.height);
 		}
 
 		if (strongDividerY >= 0)
@@ -704,7 +835,7 @@ class SidebarRail extends JPanel
 		if (dragActive && dragIndicatorY >= 0)
 		{
 			g.setColor(theme.getAccent());
-			g.fillRect(2, dragIndicatorY, getWidth() - 4, 2);
+			g.fillRect(dragIndicatorX + 2, dragIndicatorY, RailButton.WIDTH - 4, 2);
 		}
 	}
 }
