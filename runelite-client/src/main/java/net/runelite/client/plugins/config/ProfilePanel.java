@@ -477,6 +477,10 @@ class ProfilePanel extends PluginPanel
 			syncBadge.addMouseMotionListener(clickListener);
 			defaultBadge.addMouseListener(clickListener);
 			defaultBadge.addMouseMotionListener(clickListener);
+			// also on the kebab so the card's hover highlight holds over it
+			// (interactive() keeps its clicks from switching profiles)
+			menuButton.addMouseListener(clickListener);
+			menuButton.addMouseMotionListener(clickListener);
 
 			setActive(isActive);
 		}

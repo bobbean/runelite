@@ -42,7 +42,6 @@ import javax.swing.text.StyleContext;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
-import net.runelite.client.ui.theme.Theme;
 
 @Slf4j
 public class FontManager
@@ -94,10 +93,14 @@ public class FontManager
 			runescapeBoldFont = getFallbackFont(loadedBoldFont.getFamily(), Font.BOLD, 16);
 			runescapeSmallFont = getFallbackFont(loadedSmallFont.getFamily(), Font.PLAIN, 16);
 
-			titleFont = getFallbackFont(loadedBoldFont.getFamily(), Font.BOLD, Theme.FONT_SIZE_TITLE);
-			bodyFont = getFallbackFont(loadedSmallFont.getFamily(), Font.PLAIN, Theme.FONT_SIZE_BODY);
-			smallFont = getFallbackFont(loadedSmallFont.getFamily(), Font.PLAIN, Theme.FONT_SIZE_SMALL);
-			defaultUIFont = getFallbackFont(loadedFont.getFamily(), Font.PLAIN, Theme.FONT_SIZE_BODY);
+			// the RuneScape TTFs are pixel fonts on a 16px grid — off-grid
+			// sizes rasterize with broken stems — so every role sits at the
+			// native size and aliases a base font; the small role is smaller
+			// via its face, not its point size
+			titleFont = runescapeBoldFont;
+			bodyFont = runescapeSmallFont;
+			smallFont = runescapeSmallFont;
+			defaultUIFont = runescapeFont;
 		}
 		catch (FontFormatException ex)
 		{

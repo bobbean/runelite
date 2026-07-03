@@ -24,6 +24,7 @@
  */
 package net.runelite.client.ui.sidebar;
 
+import com.google.common.base.Strings;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Component;
@@ -39,7 +40,6 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.theme.Theme;
-import net.runelite.client.util.Text;
 
 /**
  * The whole sidebar: drag-resizable panel host + {@link SidebarRail}.
@@ -181,17 +181,19 @@ public class SidebarPane extends JPanel
 	{
 		return new SidebarRail.ListStore()
 		{
+			// newline-delimited, not CSV: tooltips are plugin-controlled and
+			// may contain commas
 			@Override
 			public List<String> load()
 			{
 				String value = configManager.getConfiguration(CONFIG_GROUP, key);
-				return value == null ? List.of() : Text.fromCSV(value);
+				return Strings.isNullOrEmpty(value) ? List.of() : List.of(value.split("\n"));
 			}
 
 			@Override
 			public void save(List<String> tooltips)
 			{
-				configManager.setConfiguration(CONFIG_GROUP, key, Text.toCSV(tooltips));
+				configManager.setConfiguration(CONFIG_GROUP, key, String.join("\n", tooltips));
 			}
 		};
 	}

@@ -137,7 +137,10 @@ class SidebarRail extends JPanel
 		RailButton btn = new RailButton(navBtn);
 		btn.addActionListener(ev ->
 		{
-			if (btn.consumeSuppressAction())
+			// the button's UI fires this from its own mouseReleased, before the
+			// drag handler's mouseReleased resets the drag state — so a drag
+			// gesture ending on this button is still visible here
+			if (dragActive)
 			{
 				return;
 			}
@@ -154,17 +157,17 @@ class SidebarRail extends JPanel
 		{
 			installDragHandler(btn);
 
+			List<String> pinOrder = pinStore.load();
 			if (hiddenStore.load().contains(navBtn.getTooltip()))
 			{
 				hidden.add(btn);
 			}
-			else if (pinStore.load().contains(navBtn.getTooltip()))
+			else if (pinOrder.contains(navBtn.getTooltip()))
 			{
-				List<String> order = pinStore.load();
 				pinned.add(btn);
 				pinned.sort((a, b) -> Integer.compare(
-					order.indexOf(a.getNavBtn().getTooltip()),
-					order.indexOf(b.getNavBtn().getTooltip())));
+					pinOrder.indexOf(a.getNavBtn().getTooltip()),
+					pinOrder.indexOf(b.getNavBtn().getTooltip())));
 			}
 			else
 			{
@@ -521,7 +524,6 @@ class SidebarRail extends JPanel
 			{
 				if (dragActive)
 				{
-					btn.suppressAction();
 					applyDrag(dragButton, dragInsertIndex);
 				}
 				dragStart = null;

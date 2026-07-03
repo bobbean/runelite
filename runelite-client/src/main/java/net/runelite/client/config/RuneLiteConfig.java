@@ -30,8 +30,8 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import net.runelite.api.Constants;
 import net.runelite.client.ui.ContainableFrame;
-import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.ui.overlay.components.ComponentConstants;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.OSType;
 
 @ConfigGroup(RuneLiteConfig.GROUP_NAME)

@@ -42,12 +42,8 @@ public final class Theme
 {
 	public static final Color DEFAULT_ACCENT = new Color(220, 138, 0);
 
-	// typography role sizes (see TOKENS.md). The RuneScape TTFs are pixel fonts
-	// on a 16px grid — off-grid sizes (e.g. 18) rasterize with broken stems, so
-	// roles stay at the native size; the small role is smaller via its face
-	public static final int FONT_SIZE_TITLE = 16;
-	public static final int FONT_SIZE_BODY = 16;
-	public static final int FONT_SIZE_SMALL = 16;
+	// typography roles live in FontManager (title/body/small/defaultUI);
+	// the pixel-grid constraint on their sizes is documented there
 
 	// spacing scale
 	public static final int SPACE_2 = 2;

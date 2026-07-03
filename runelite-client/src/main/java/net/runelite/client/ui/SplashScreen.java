@@ -45,6 +45,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicProgressBarUI;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.ui.laf.RuneLiteLAF;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ImageUtil;
 
 @Slf4j
@@ -74,7 +75,10 @@ public class SplashScreen extends JFrame implements ActionListener
 		setIconImages(Arrays.asList(ClientUI.ICON_128, ClientUI.ICON_16));
 		setLayout(null);
 		Container pane = getContentPane();
-		pane.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		// the splash shows before the config (and thus the user's theme accent)
+		// is loaded, so it deliberately uses the default theme rather than the
+		// ColorScheme aliases, which are not repointed until Theme.install()
+		pane.setBackground(Theme.getActive().getSurfaceSunken());
 
 		Font font = new Font(Font.DIALOG, Font.PLAIN, 12);
 
@@ -93,8 +97,8 @@ public class SplashScreen extends JFrame implements ActionListener
 		y += action.getHeight() + PAD;
 
 		pane.add(progress);
-		progress.setForeground(ColorScheme.BRAND_ORANGE);
-		progress.setBackground(ColorScheme.BRAND_ORANGE.darker().darker());
+		progress.setForeground(Theme.DEFAULT_ACCENT);
+		progress.setBackground(Theme.DEFAULT_ACCENT.darker().darker());
 		progress.setBorder(new EmptyBorder(0, 0, 0, 0));
 		progress.setBounds(0, y, WIDTH, 14);
 		progress.setFont(font);

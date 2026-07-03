@@ -253,15 +253,19 @@ public class ClientUI
 		{
 			boolean closingOpenTab = !selectedTabHistory.isEmpty() && selectedTabHistory.getLast().navBtn == navBtn;
 			selectedTabHistory.removeIf(it -> it.navBtn == navBtn);
-			sidebar.removeNavigation(navBtn);
 			if (closingOpenTab)
 			{
 				HistoryEntry entry = selectedTabHistory.isEmpty()
 					? new HistoryEntry(true, null)
 					: selectedTabHistory.removeLast();
 
+				// switch away before removing: this deactivates the closing
+				// panel through the selection listener, so removeNavigation
+				// below finds nothing of its own selected and doesn't fire a
+				// spurious selection change into the history
 				openPanel(entry.navBtn, entry.sidebarOpen);
 			}
+			sidebar.removeNavigation(navBtn);
 		}
 
 		sidebarEntries.remove(navBtn);

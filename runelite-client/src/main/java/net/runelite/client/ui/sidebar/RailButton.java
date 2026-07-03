@@ -53,10 +53,6 @@ class RailButton extends JButton
 	@Setter
 	private boolean active;
 
-	// set while a drag gesture ends on this button, so the release doesn't
-	// also fire the select action
-	private boolean suppressAction;
-
 	RailButton(NavigationButton navBtn)
 	{
 		this.navBtn = navBtn;
@@ -76,18 +72,6 @@ class RailButton extends JButton
 		setFocusPainted(false);
 		setOpaque(false);
 		setRolloverEnabled(true);
-	}
-
-	void suppressAction()
-	{
-		suppressAction = true;
-	}
-
-	boolean consumeSuppressAction()
-	{
-		boolean v = suppressAction;
-		suppressAction = false;
-		return v;
 	}
 
 	@Override
