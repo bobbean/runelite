@@ -42,7 +42,6 @@ import javax.inject.Provider;
 import javax.inject.Singleton;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToggleButton;
@@ -74,6 +73,7 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.MultiplexingPluginPanel;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
+import net.runelite.client.ui.components.panel.SectionHeader;
 import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.Text;
 
@@ -364,13 +364,15 @@ class PluginListPanel extends PluginPanel
 		return chip;
 	}
 
-	private static JLabel sectionHeader(String text)
+	private static Component sectionHeader(String text)
 	{
-		JLabel label = new JLabel(text.toUpperCase(Locale.ROOT));
-		label.setFont(FontManager.getSmallFont());
-		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		label.setBorder(new EmptyBorder(Theme.SPACE_8, Theme.SPACE_2, 0, 0));
-		return label;
+		// wrapped for the SPACE_8 gap above each group; SectionHeader owns its
+		// own bottom rule border
+		JPanel wrapper = new JPanel(new BorderLayout());
+		wrapper.setOpaque(false);
+		wrapper.setBorder(new EmptyBorder(Theme.SPACE_8, 0, 0, 0));
+		wrapper.add(new SectionHeader(text));
+		return wrapper;
 	}
 
 	private static class CategoryChip extends JToggleButton

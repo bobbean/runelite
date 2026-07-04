@@ -84,6 +84,7 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.DragAndDropReorderPane;
 import net.runelite.client.ui.components.MouseDragEventForwarder;
+import net.runelite.client.ui.components.panel.Card;
 import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
@@ -332,7 +333,7 @@ class ProfilePanel extends PluginPanel
 		});
 	}
 
-	private class ProfileCard extends JPanel
+	private class ProfileCard extends Card
 	{
 		private static final int LEFT_BORDER_WIDTH = 3;
 		private static final int LEFT_GAP = 6;
@@ -344,9 +345,11 @@ class ProfilePanel extends PluginPanel
 
 		private ProfileCard(ConfigProfile profile, boolean isActive, boolean rsProfileDefault, boolean limited)
 		{
-			this.profile = profile;
+			// same base/hover colors the cards had pre-Card; setActive() below
+			// replaces Card's default border with the accent matte
+			super(Theme.getActive().getSurfaceSunken(), Theme.getActive().getSurfaceHover());
 
-			setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			this.profile = profile;
 
 			name = new JTextField();
 			name.setText(profile.getName());
@@ -449,14 +452,14 @@ class ProfilePanel extends PluginPanel
 				{
 					if (!active)
 					{
-						setBackground(ColorScheme.DARK_GRAY_HOVER_COLOR);
+						setHovered(true);
 					}
 				}
 
 				@Override
 				public void mouseExited(MouseEvent ev)
 				{
-					setBackground(active ? Theme.getActive().getSurfaceRaised() : ColorScheme.DARKER_GRAY_COLOR);
+					setHovered(false);
 				}
 
 				private boolean interactive(MouseEvent ev)
@@ -577,7 +580,7 @@ class ProfilePanel extends PluginPanel
 			setBorder(new MatteBorder(0, LEFT_BORDER_WIDTH, 0, 0, active
 				? ColorScheme.BRAND_ORANGE
 				: ColorScheme.DARKER_GRAY_COLOR));
-			setBackground(active ? Theme.getActive().getSurfaceRaised() : ColorScheme.DARKER_GRAY_COLOR);
+			setBaseBackground(active ? Theme.getActive().getSurfaceRaised() : ColorScheme.DARKER_GRAY_COLOR);
 		}
 
 		private void startRenaming()

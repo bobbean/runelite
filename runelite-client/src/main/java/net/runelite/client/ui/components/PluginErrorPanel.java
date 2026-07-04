@@ -25,51 +25,26 @@
  */
 package net.runelite.client.ui.components;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.SwingConstants;
-import javax.swing.border.EmptyBorder;
-import net.runelite.client.ui.FontManager;
-import net.runelite.client.ui.components.shadowlabel.JShadowedLabel;
+import net.runelite.client.ui.components.panel.EmptyState;
 
 /**
  * A component to display an error/info message (to be used on a plugin panel)
  * Example uses are: no ge search results found, no ge offers found.
+ *
+ * Kept as a thin subclass of {@link EmptyState} for the existing in-repo and
+ * plugin-hub callers; it preserves the historical hidden-until-content behavior.
  */
-public class PluginErrorPanel extends JPanel
+public class PluginErrorPanel extends EmptyState
 {
-	private final JLabel noResultsTitle = new JShadowedLabel();
-	private final JLabel noResultsDescription = new JShadowedLabel();
-
 	public PluginErrorPanel()
 	{
-		setOpaque(false);
-		setBorder(new EmptyBorder(50, 10, 0, 10));
-		setLayout(new BorderLayout());
-
-		noResultsTitle.setForeground(Color.WHITE);
-		noResultsTitle.setHorizontalAlignment(SwingConstants.CENTER);
-
-		noResultsDescription.setFont(FontManager.getRunescapeSmallFont());
-		noResultsDescription.setForeground(Color.GRAY);
-		noResultsDescription.setHorizontalAlignment(SwingConstants.CENTER);
-
-		add(noResultsTitle, BorderLayout.NORTH);
-		add(noResultsDescription, BorderLayout.CENTER);
-
 		setVisible(false);
 	}
 
-	/**
-	 * Changes the content of the panel to the given parameters.
-	 * The description has to be wrapped in html so that its text can be wrapped.
-	 */
+	@Override
 	public void setContent(String title, String description)
 	{
-		noResultsTitle.setText(title);
-		noResultsDescription.setText("<html><body style = 'text-align:center'>" + description + "</body></html>");
+		super.setContent(title, description);
 		setVisible(true);
 	}
 }
