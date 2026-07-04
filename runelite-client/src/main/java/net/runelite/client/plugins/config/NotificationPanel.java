@@ -134,7 +134,7 @@ class NotificationPanel extends PluginPanel
 		topPanel.add(topPanelBackButton, BorderLayout.WEST);
 
 		title = new JLabel();
-		title.setForeground(Color.WHITE);
+		title.setForeground(ColorScheme.TEXT_COLOR);
 		topPanel.add(title, BorderLayout.CENTER);
 
 		enabled = new JCheckBox();
@@ -166,7 +166,7 @@ class NotificationPanel extends PluginPanel
 		item.setLayout(new BorderLayout());
 		item.setMinimumSize(new Dimension(PANEL_WIDTH, 0));
 		JLabel configEntryName = new JLabel(name);
-		configEntryName.setForeground(Color.WHITE);
+		configEntryName.setForeground(ColorScheme.TEXT_COLOR);
 		if (!"".equals(description))
 		{
 			configEntryName.setToolTipText("<html>" + name + ":<br>" + description + "</html>");

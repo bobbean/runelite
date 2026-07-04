@@ -43,6 +43,7 @@ import javax.swing.UIDefaults;
 import lombok.SneakyThrows;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.theme.Theme;
 
 public class RuneLiteLAF extends FlatDarkLaf
 {
@@ -99,11 +100,29 @@ public class RuneLiteLAF extends FlatDarkLaf
 				}
 
 				Color color = (Color) f.get(null);
-				extras.put("@" + name, String.format("#%06x%02x", color.getRGB() & 0xFFFFFF, color.getRGB() >>> 24));
+				extras.put("@" + name, formatColor(color));
+			}
+		}
+
+		// and the active theme's tokens under their semantic names
+		// (@surface, @textPrimary, ...) — Theme.install() runs before the LAF
+		// is constructed, so this reads the resolved theme
+		Theme theme = Theme.getActive();
+		for (Field f : Theme.class.getDeclaredFields())
+		{
+			if (!Modifier.isStatic(f.getModifiers()) && Color.class == f.getType())
+			{
+				f.setAccessible(true);
+				extras.put("@" + f.getName(), formatColor((Color) f.get(theme)));
 			}
 		}
 
 		setExtraDefaults(extras);
+	}
+
+	private static String formatColor(Color color)
+	{
+		return String.format("#%06x%02x", color.getRGB() & 0xFFFFFF, color.getRGB() >>> 24);
 	}
 
 	@Override

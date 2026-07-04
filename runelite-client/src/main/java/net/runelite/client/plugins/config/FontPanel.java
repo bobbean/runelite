@@ -26,7 +26,6 @@ package net.runelite.client.plugins.config;
 
 import com.google.common.primitives.Ints;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ItemEvent;
@@ -138,7 +137,7 @@ class FontPanel extends PluginPanel
 		topPanel.add(topPanelBackButton, BorderLayout.WEST);
 
 		title = new JLabel();
-		title.setForeground(Color.WHITE);
+		title.setForeground(ColorScheme.TEXT_COLOR);
 		topPanel.add(title, BorderLayout.CENTER);
 	}
 
@@ -148,7 +147,7 @@ class FontPanel extends PluginPanel
 		item.setLayout(new BorderLayout());
 		item.setMinimumSize(new Dimension(PANEL_WIDTH, 0));
 		JLabel configEntryName = new JLabel(name);
-		configEntryName.setForeground(Color.WHITE);
+		configEntryName.setForeground(ColorScheme.TEXT_COLOR);
 		if (!"".equals(description))
 		{
 			configEntryName.setToolTipText("<html>" + name + ":<br>" + description + "</html>");

@@ -30,6 +30,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import javax.swing.JPanel;
 import lombok.Getter;
+import net.runelite.client.ui.ColorScheme;
 
 /**
  * A progress bar to be displayed underneath the GE offer item panels
@@ -44,7 +45,7 @@ public class ThinProgressBar extends JPanel
 
 	public ThinProgressBar()
 	{
-		setForeground(Color.GREEN);
+		setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
 		setMaximumSize(new Dimension(Integer.MAX_VALUE, 4));
 		setMinimumSize(new Dimension(0, 4));
 		setPreferredSize(new Dimension(0, 4));

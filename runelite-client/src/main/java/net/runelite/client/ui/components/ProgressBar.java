@@ -24,7 +24,6 @@
  */
 package net.runelite.client.ui.components;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.GridLayout;
@@ -33,6 +32,7 @@ import java.util.List;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
+import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.components.shadowlabel.JShadowedLabel;
 
@@ -55,22 +55,22 @@ public class ProgressBar extends DimmableJPanel
 	{
 		setLayout(new GridLayout(1, 3));
 		// The background color should be overridden
-		setBackground(Color.GREEN.darker());
-		setForeground(Color.GREEN.brighter());
+		setBackground(ColorScheme.PROGRESS_COMPLETE_COLOR.darker());
+		setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
 
 		setPreferredSize(new Dimension(100, 16));
 
 		leftLabel.setFont(FontManager.getRunescapeSmallFont());
-		leftLabel.setForeground(Color.WHITE);
+		leftLabel.setForeground(ColorScheme.TEXT_COLOR);
 		leftLabel.setBorder(new EmptyBorder(2, 5, 0, 0));
 
 		rightLabel.setFont(FontManager.getRunescapeSmallFont());
-		rightLabel.setForeground(Color.WHITE);
+		rightLabel.setForeground(ColorScheme.TEXT_COLOR);
 		rightLabel.setHorizontalAlignment(SwingConstants.RIGHT);
 		rightLabel.setBorder(new EmptyBorder(2, 0, 0, 5));
 
 		centerLabel.setFont(FontManager.getRunescapeSmallFont());
-		centerLabel.setForeground(Color.WHITE);
+		centerLabel.setForeground(ColorScheme.TEXT_COLOR);
 		centerLabel.setHorizontalAlignment(SwingConstants.CENTER);
 		centerLabel.setBorder(new EmptyBorder(2, 0, 0, 0));
 
@@ -109,14 +109,14 @@ public class ProgressBar extends DimmableJPanel
 
 		if (dimmed)
 		{
-			leftLabel.setForeground(Color.GRAY);
-			rightLabel.setForeground(Color.GRAY);
+			leftLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			rightLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			centerLabel.setText(dimmedText);
 		}
 		else
 		{
-			leftLabel.setForeground(Color.WHITE);
-			rightLabel.setForeground(Color.WHITE);
+			leftLabel.setForeground(ColorScheme.TEXT_COLOR);
+			rightLabel.setForeground(ColorScheme.TEXT_COLOR);
 			centerLabel.setText(centerLabelText);
 		}
 	}

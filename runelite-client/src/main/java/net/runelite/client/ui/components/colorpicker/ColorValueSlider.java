@@ -34,6 +34,7 @@ import java.awt.event.MouseMotionAdapter;
 import java.util.function.Consumer;
 import javax.swing.JPanel;
 import lombok.Setter;
+import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ColorUtil;
 
 public class ColorValueSlider extends JPanel
@@ -41,8 +42,8 @@ public class ColorValueSlider extends JPanel
 	static final int KNOB_WIDTH = 4;
 
 	private static final int KNOB_HEIGHT = 14;
-	private static final Color TRACK_COLOR = new Color(20, 20, 20);
-	private static final Color KNOB_COLOR = new Color(150, 150, 150);
+	private static final Color TRACK_COLOR = ColorScheme.SCROLL_TRACK_COLOR;
+	private static final Color KNOB_COLOR = ColorScheme.LIGHT_GRAY_COLOR;
 
 	private int value = ColorUtil.MAX_RGB_VALUE + KNOB_WIDTH;
 

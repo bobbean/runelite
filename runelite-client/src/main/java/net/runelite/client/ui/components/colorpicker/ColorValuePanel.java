@@ -26,7 +26,6 @@
 package net.runelite.client.ui.components.colorpicker;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.FocusAdapter;
@@ -105,7 +104,7 @@ public class ColorValuePanel extends JPanel
 
 		JLabel label = new JLabel(labelText);
 		label.setPreferredSize(new Dimension(45, 0));
-		label.setForeground(Color.WHITE);
+		label.setForeground(ColorScheme.TEXT_COLOR);
 
 		slider.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		slider.setBorder(new EmptyBorder(0, 0, 5, 0));

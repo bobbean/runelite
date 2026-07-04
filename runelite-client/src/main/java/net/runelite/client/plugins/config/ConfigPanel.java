@@ -196,7 +196,7 @@ class ConfigPanel extends PluginPanel
 		pluginToggle = new PluginToggleButton();
 		topPanel.add(pluginToggle, BorderLayout.EAST);
 		title = new JLabel();
-		title.setForeground(Color.WHITE);
+		title.setForeground(ColorScheme.TEXT_COLOR);
 
 		topPanel.add(title);
 	}
@@ -208,7 +208,7 @@ class ConfigPanel extends PluginPanel
 
 		String name = pluginConfig.getName();
 		title.setText(name);
-		title.setForeground(Color.WHITE);
+		title.setForeground(ColorScheme.TEXT_COLOR);
 		title.setToolTipText("<html>" + name + ":<br>" + pluginConfig.getDescription() + "</html>");
 
 		String iname = pluginConfig.getInternalPluginHubName();
@@ -284,7 +284,7 @@ class ConfigPanel extends PluginPanel
 			item.setMinimumSize(new Dimension(PANEL_WIDTH, 0));
 			String name = cid.getItem().name();
 			JLabel configEntryName = new JLabel(name);
-			configEntryName.setForeground(Color.WHITE);
+			configEntryName.setForeground(ColorScheme.TEXT_COLOR);
 			String description = cid.getItem().description();
 			if (!"".equals(description))
 			{
