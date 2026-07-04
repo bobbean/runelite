@@ -99,6 +99,7 @@ import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.UnitFormatterFactory;
 import net.runelite.client.ui.components.ColorJButton;
 import net.runelite.client.ui.components.TitleCaseListCellRenderer;
+import net.runelite.client.ui.components.colorpicker.ColorPalettePopup;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.ui.components.colorpicker.RuneliteColorPicker;
 import net.runelite.client.ui.components.panel.Section;
@@ -508,23 +509,39 @@ class ConfigPanel extends PluginPanel
 			@Override
 			public void mouseClicked(MouseEvent e)
 			{
-				RuneliteColorPicker colorPicker = colorPickerManager.create(
-					ConfigPanel.this,
-					colorPickerBtn.getColor(),
-					cid.getItem().name(),
-					alphaHidden);
-				colorPicker.setLocationRelativeTo(colorPickerBtn);
-				colorPicker.setOnColorChange(c ->
+				// palette/hex is the primary interaction; the full picker is
+				// behind its "Color picker..." button (audit item)
+				ColorPalettePopup popup = new ColorPalettePopup(colorPickerBtn.getColor(), alphaHidden);
+				popup.setOnSelect(p ->
 				{
-					colorPickerBtn.setColor(c);
-					colorPickerBtn.setText("#" + (alphaHidden ? ColorUtil.colorToHexCode(c) : ColorUtil.colorToAlphaHexCode(c)).toUpperCase());
+					updateColorButton(colorPickerBtn, p.getSelectedColor(), alphaHidden);
+					changeConfiguration(p, cd, cid);
 				});
-				colorPicker.setOnClose(c -> changeConfiguration(colorPicker, cd, cid));
-				colorPicker.setVisible(true);
+				popup.setOnOpenPicker(() -> openColorPicker(colorPickerBtn, cd, cid, alphaHidden));
+				popup.show(colorPickerBtn, 0, colorPickerBtn.getHeight());
 			}
 		});
 
 		return colorPickerBtn;
+	}
+
+	private void openColorPicker(ColorJButton colorPickerBtn, ConfigDescriptor cd, ConfigItemDescriptor cid, boolean alphaHidden)
+	{
+		RuneliteColorPicker colorPicker = colorPickerManager.create(
+			ConfigPanel.this,
+			colorPickerBtn.getColor(),
+			cid.getItem().name(),
+			alphaHidden);
+		colorPicker.setLocationRelativeTo(colorPickerBtn);
+		colorPicker.setOnColorChange(c -> updateColorButton(colorPickerBtn, c, alphaHidden));
+		colorPicker.setOnClose(c -> changeConfiguration(colorPicker, cd, cid));
+		colorPicker.setVisible(true);
+	}
+
+	private static void updateColorButton(ColorJButton colorPickerBtn, Color c, boolean alphaHidden)
+	{
+		colorPickerBtn.setColor(c);
+		colorPickerBtn.setText("#" + (alphaHidden ? ColorUtil.colorToHexCode(c) : ColorUtil.colorToAlphaHexCode(c)).toUpperCase());
 	}
 
 	private JPanel createDimension(ConfigDescriptor cd, ConfigItemDescriptor cid)
@@ -736,6 +753,11 @@ class ConfigPanel extends PluginPanel
 		{
 			RuneliteColorPicker colorPicker = (RuneliteColorPicker) component;
 			configManager.setConfiguration(cd.getGroup().value(), cid.getItem().keyName(), colorPicker.getSelectedColor().getRGB() + "");
+		}
+		else if (component instanceof ColorPalettePopup)
+		{
+			ColorPalettePopup palette = (ColorPalettePopup) component;
+			configManager.setConfiguration(cd.getGroup().value(), cid.getItem().keyName(), palette.getSelectedColor().getRGB() + "");
 		}
 		else if (component instanceof JComboBox)
 		{

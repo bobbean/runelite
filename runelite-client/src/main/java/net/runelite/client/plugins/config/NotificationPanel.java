@@ -72,6 +72,7 @@ import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.UnitFormatterFactory;
 import net.runelite.client.ui.components.ColorJButton;
 import net.runelite.client.ui.components.TitleCaseListCellRenderer;
+import net.runelite.client.ui.components.colorpicker.ColorPalettePopup;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.ui.components.colorpicker.RuneliteColorPicker;
 import net.runelite.client.util.ColorUtil;
@@ -240,19 +241,33 @@ class NotificationPanel extends PluginPanel
 			@Override
 			public void mouseClicked(MouseEvent e)
 			{
-				RuneliteColorPicker colorPicker = colorPickerManager.create(
-					NotificationPanel.this,
-					colorPickerBtn.getColor(),
-					name,
-					false);
-				colorPicker.setLocationRelativeTo(colorPickerBtn);
-				colorPicker.setOnColorChange(c ->
+				// palette/hex primary, full picker secondary — same interaction
+				// as ConfigPanel color items
+				ColorPalettePopup popup = new ColorPalettePopup(colorPickerBtn.getColor(), false);
+				popup.setOnSelect(p ->
 				{
+					Color c = p.getSelectedColor();
 					colorPickerBtn.setColor(c);
 					colorPickerBtn.setText("#" + ColorUtil.colorToAlphaHexCode(c).toUpperCase());
+					onClose.accept(c);
 				});
-				colorPicker.setOnClose(onClose);
-				colorPicker.setVisible(true);
+				popup.setOnOpenPicker(() ->
+				{
+					RuneliteColorPicker colorPicker = colorPickerManager.create(
+						NotificationPanel.this,
+						colorPickerBtn.getColor(),
+						name,
+						false);
+					colorPicker.setLocationRelativeTo(colorPickerBtn);
+					colorPicker.setOnColorChange(c ->
+					{
+						colorPickerBtn.setColor(c);
+						colorPickerBtn.setText("#" + ColorUtil.colorToAlphaHexCode(c).toUpperCase());
+					});
+					colorPicker.setOnClose(onClose);
+					colorPicker.setVisible(true);
+				});
+				popup.show(colorPickerBtn, 0, colorPickerBtn.getHeight());
 			}
 		});
 
