@@ -27,7 +27,6 @@
 package net.runelite.client.plugins.xptracker;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -80,7 +79,7 @@ class XpInfoBox extends JPanel
 	private static final String PROGRESS_BAR_TOOLTIP_NO_ACTIONS =
 		"<html>%s %s</html>";
 	private static final String HTML_LABEL_TEMPLATE =
-		"<html><body style='color:%s'>%s<span style='color:white'>%s</span></body></html>";
+		"<html><body style='color:%s'>%s<span style='color:%s'>%s</span></body></html>";
 
 	private static final String REMOVE_STATE = "Remove from canvas";
 	private static final String ADD_STATE = "Add to canvas";
@@ -221,7 +220,7 @@ class XpInfoBox extends JPanel
 		progressWrapper.setBorder(DEFAULT_PROGRESS_WRAPPER_BORDER);
 
 		progressBar.setMaximumValue(100);
-		progressBar.setBackground(new Color(61, 56, 49));
+		progressBar.setBackground(ColorScheme.CONTROL_COLOR);
 		progressBar.setForeground(SkillColor.find(skill).getColor());
 		progressBar.setDimmedText("Paused");
 
@@ -422,6 +421,8 @@ class XpInfoBox extends JPanel
 
 	static String htmlLabel(String key, String valueStr)
 	{
-		return String.format(HTML_LABEL_TEMPLATE, ColorUtil.toHexColor(ColorScheme.LIGHT_GRAY_COLOR), key, valueStr);
+		return String.format(HTML_LABEL_TEMPLATE,
+			ColorUtil.toHexColor(ColorScheme.LIGHT_GRAY_COLOR), key,
+			ColorUtil.toHexColor(ColorScheme.TEXT_COLOR), valueStr);
 	}
 }

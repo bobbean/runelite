@@ -90,7 +90,9 @@ class SkillCalculatorPanel extends PluginPanel
 	{
 		for (CalculatorType calculatorType : CalculatorType.values())
 		{
-			ImageIcon icon = new ImageIcon(iconManager.getSkillImage(calculatorType.getSkill(), true));
+			// full-size icons (25px, vs the 16px small set) — the small ones left
+			// the 6-column grid mostly empty (audit: skill calc icon sizing)
+			ImageIcon icon = new ImageIcon(iconManager.getSkillImage(calculatorType.getSkill()));
 			MaterialTab tab = new MaterialTab(icon, tabGroup, null);
 			tab.setOnSelectEvent(() ->
 			{

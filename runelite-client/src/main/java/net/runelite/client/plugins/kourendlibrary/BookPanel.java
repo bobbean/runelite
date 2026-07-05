@@ -84,7 +84,7 @@ class BookPanel extends JPanel
 	{
 		if (held)
 		{
-			location.setForeground(Color.WHITE);
+			location.setForeground(ColorScheme.TEXT_COLOR);
 		}
 	}
 }

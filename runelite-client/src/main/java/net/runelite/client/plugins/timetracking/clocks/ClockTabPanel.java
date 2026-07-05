@@ -157,7 +157,7 @@ public class ClockTabPanel extends TabContentPanel
 		panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
 		JLabel headerLabel = new JLabel(title);
-		headerLabel.setForeground(Color.WHITE);
+		headerLabel.setForeground(ColorScheme.TEXT_COLOR);
 		headerLabel.setFont(FontManager.getRunescapeSmallFont());
 		panel.add(headerLabel, BorderLayout.CENTER);
 

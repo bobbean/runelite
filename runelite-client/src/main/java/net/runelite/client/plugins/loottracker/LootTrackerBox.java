@@ -105,7 +105,7 @@ class LootTrackerBox extends JPanel
 		JLabel titleLabel = new JLabel();
 		titleLabel.setText(Text.removeTags(record.getTitle()));
 		titleLabel.setFont(FontManager.getRunescapeSmallFont());
-		titleLabel.setForeground(Color.WHITE);
+		titleLabel.setForeground(ColorScheme.TEXT_COLOR);
 		// Set a size to make BoxLayout truncate the name
 		titleLabel.setMinimumSize(new Dimension(1, titleLabel.getPreferredSize().height));
 		logTitle.add(titleLabel);

@@ -50,6 +50,8 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.DragAndDropReorderPane;
 import net.runelite.client.ui.components.PluginErrorPanel;
+import net.runelite.client.ui.components.panel.Card;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
 import okhttp3.HttpUrl;
@@ -61,7 +63,7 @@ class XpPanel extends PluginPanel
 	private final JLabel overallExpGained = new JLabel(XpInfoBox.htmlLabel("Gained: ", 0));
 	private final JLabel overallExpHour = new JLabel(XpInfoBox.htmlLabel("Per hour: ", 0));
 
-	private final JPanel overallPanel = new JPanel();
+	private final JPanel overallPanel = new Card();
 
 	/* This displays the "No exp gained" text */
 	private final PluginErrorPanel errorPanel = new PluginErrorPanel();
@@ -70,7 +72,7 @@ class XpPanel extends PluginPanel
 	{
 		super();
 
-		setBorder(new EmptyBorder(6, 6, 6, 6));
+		setBorder(new EmptyBorder(Theme.SPACE_8, Theme.SPACE_8, Theme.SPACE_8, Theme.SPACE_8));
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 		setLayout(new BorderLayout());
 
@@ -79,8 +81,6 @@ class XpPanel extends PluginPanel
 		layoutPanel.setLayout(boxLayout);
 		add(layoutPanel, BorderLayout.NORTH);
 
-		overallPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
-		overallPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		overallPanel.setLayout(new BorderLayout());
 		overallPanel.setVisible(false); // this will only become visible when the player gets exp
 
@@ -137,7 +137,7 @@ class XpPanel extends PluginPanel
 		final JLabel overallIcon = new JLabel(new ImageIcon(ImageUtil.loadImageResource(getClass(), "/skill_icons/overall.png")));
 
 		final JPanel overallInfo = new JPanel();
-		overallInfo.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		overallInfo.setOpaque(false);
 		overallInfo.setLayout(new GridLayout(2, 1));
 		overallInfo.setBorder(new EmptyBorder(0, 10, 0, 0));
 

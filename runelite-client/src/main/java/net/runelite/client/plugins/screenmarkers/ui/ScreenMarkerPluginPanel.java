@@ -30,12 +30,9 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import javax.swing.Box;
 import javax.swing.ImageIcon;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import lombok.Getter;
@@ -44,12 +41,14 @@ import net.runelite.client.plugins.screenmarkers.ScreenMarkerPlugin;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.PluginErrorPanel;
+import net.runelite.client.ui.components.panel.IconButton;
+import net.runelite.client.ui.components.panel.PanelHeader;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ImageUtil;
 
 public class ScreenMarkerPluginPanel extends PluginPanel
 {
 	private static final ImageIcon ADD_ICON;
-	private static final ImageIcon ADD_HOVER_ICON;
 
 	private static final Color DEFAULT_BORDER_COLOR = Color.GREEN;
 	private static final Color DEFAULT_FILL_COLOR = new Color(0, 255, 0, 0);
@@ -60,8 +59,8 @@ public class ScreenMarkerPluginPanel extends PluginPanel
 	public static final Color SELECTED_FILL_COLOR = DEFAULT_FILL_COLOR;
 	public static final int SELECTED_BORDER_THICKNESS = DEFAULT_BORDER_THICKNESS;
 
-	private final JLabel addMarker = new JLabel(ADD_ICON);
-	private final JLabel title = new JLabel();
+	private final PanelHeader header = new PanelHeader("Screen Markers");
+	private final IconButton addMarker;
 	private final PluginErrorPanel noMarkersPanel = new PluginErrorPanel();
 	private final JPanel markerView = new JPanel(new GridBagLayout());
 
@@ -74,7 +73,6 @@ public class ScreenMarkerPluginPanel extends PluginPanel
 	{
 		final BufferedImage addIcon = ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "add_icon.png");
 		ADD_ICON = new ImageIcon(addIcon);
-		ADD_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(addIcon, 0.53f));
 	}
 
 	public ScreenMarkerPluginPanel(ScreenMarkerPlugin screenMarkerPlugin)
@@ -82,16 +80,9 @@ public class ScreenMarkerPluginPanel extends PluginPanel
 		this.plugin = screenMarkerPlugin;
 
 		setLayout(new BorderLayout());
-		setBorder(new EmptyBorder(10, 10, 10, 10));
+		setBorder(new EmptyBorder(Theme.SPACE_8, Theme.SPACE_8, Theme.SPACE_8, Theme.SPACE_8));
 
-		JPanel northPanel = new JPanel(new BorderLayout());
-		northPanel.setBorder(new EmptyBorder(1, 0, 10, 0));
-
-		title.setText("Screen Markers");
-		title.setForeground(Color.WHITE);
-
-		northPanel.add(title, BorderLayout.WEST);
-		northPanel.add(addMarker, BorderLayout.EAST);
+		addMarker = header.addAction(ADD_ICON, "Add new screen marker", () -> setCreation(true));
 
 		JPanel centerPanel = new JPanel(new BorderLayout());
 		centerPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -116,31 +107,9 @@ public class ScreenMarkerPluginPanel extends PluginPanel
 		markerView.add(creationPanel, constraints);
 		constraints.gridy++;
 
-		addMarker.setToolTipText("Add new screen marker");
-		addMarker.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent mouseEvent)
-			{
-				setCreation(true);
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent mouseEvent)
-			{
-				addMarker.setIcon(ADD_HOVER_ICON);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent mouseEvent)
-			{
-				addMarker.setIcon(ADD_ICON);
-			}
-		});
-
 		centerPanel.add(markerView, BorderLayout.CENTER);
 
-		add(northPanel, BorderLayout.NORTH);
+		add(header, BorderLayout.NORTH);
 		add(centerPanel, BorderLayout.CENTER);
 	}
 
@@ -165,7 +134,7 @@ public class ScreenMarkerPluginPanel extends PluginPanel
 
 		boolean empty = constraints.gridy == 0;
 		noMarkersPanel.setVisible(empty);
-		title.setVisible(!empty);
+		header.setTitleVisible(!empty);
 
 		markerView.add(noMarkersPanel, constraints);
 		constraints.gridy++;
@@ -183,13 +152,13 @@ public class ScreenMarkerPluginPanel extends PluginPanel
 		if (on)
 		{
 			noMarkersPanel.setVisible(false);
-			title.setVisible(true);
+			header.setTitleVisible(true);
 		}
 		else
 		{
 			boolean empty = plugin.getScreenMarkers().isEmpty();
 			noMarkersPanel.setVisible(empty);
-			title.setVisible(!empty);
+			header.setTitleVisible(!empty);
 		}
 
 		creationPanel.setVisible(on);

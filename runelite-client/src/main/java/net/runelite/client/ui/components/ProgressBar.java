@@ -24,9 +24,9 @@
  */
 package net.runelite.client.ui.components;
 
+import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Graphics;
-import java.awt.GridLayout;
 import java.util.Collections;
 import java.util.List;
 import javax.swing.JLabel;
@@ -53,7 +53,10 @@ public class ProgressBar extends DimmableJPanel
 
 	public ProgressBar()
 	{
-		setLayout(new GridLayout(1, 3));
+		// BorderLayout instead of a 1x3 grid so the center label can use all
+		// the width the side labels don't need (a third clips e.g. the xp
+		// tracker's "3 days 02:44:20" time-to-goal)
+		setLayout(new BorderLayout());
 		// The background color should be overridden
 		setBackground(ColorScheme.PROGRESS_COMPLETE_COLOR.darker());
 		setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
@@ -75,9 +78,9 @@ public class ProgressBar extends DimmableJPanel
 		centerLabel.setBorder(new EmptyBorder(2, 0, 0, 0));
 
 		// Adds components to be automatically redrawn when paintComponents is called
-		add(leftLabel);
-		add(centerLabel);
-		add(rightLabel);
+		add(leftLabel, BorderLayout.WEST);
+		add(centerLabel, BorderLayout.CENTER);
+		add(rightLabel, BorderLayout.EAST);
 	}
 
 	@Override

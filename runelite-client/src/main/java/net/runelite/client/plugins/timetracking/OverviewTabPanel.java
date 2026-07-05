@@ -107,7 +107,7 @@ class OverviewTabPanel extends TabContentPanel
 
 		if (timers == 0)
 		{
-			timerOverview.updateStatus("No active timers", Color.GRAY);
+			timerOverview.updateStatus("No active timers", ColorScheme.LIGHT_GRAY_COLOR);
 		}
 		else
 		{
@@ -116,7 +116,7 @@ class OverviewTabPanel extends TabContentPanel
 
 		if (stopwatches == 0)
 		{
-			stopwatchOverview.updateStatus("No active stopwatches", Color.GRAY);
+			stopwatchOverview.updateStatus("No active stopwatches", ColorScheme.LIGHT_GRAY_COLOR);
 		}
 		else
 		{
@@ -145,16 +145,16 @@ class OverviewTabPanel extends TabContentPanel
 				}
 				else
 				{
-					panel.updateStatus("Ready " + getFormattedEstimate(duration, config.timeFormatMode()), Color.GRAY);
+					panel.updateStatus("Ready " + getFormattedEstimate(duration, config.timeFormatMode()), ColorScheme.LIGHT_GRAY_COLOR);
 				}
 				break;
 			}
 			case EMPTY:
-				panel.updateStatus("Empty", Color.GRAY);
+				panel.updateStatus("Empty", ColorScheme.LIGHT_GRAY_COLOR);
 				break;
 			case UNKNOWN:
 			default:
-				panel.updateStatus("Unknown", Color.GRAY);
+				panel.updateStatus("Unknown", ColorScheme.LIGHT_GRAY_COLOR);
 				break;
 		}
 	}
@@ -177,7 +177,7 @@ class OverviewTabPanel extends TabContentPanel
 							return;
 						}
 
-						farmingContractOverview.updateStatus("Ready " + getFormattedEstimate(duration, config.timeFormatMode()), Color.GRAY);
+						farmingContractOverview.updateStatus("Ready " + getFormattedEstimate(duration, config.timeFormatMode()), ColorScheme.LIGHT_GRAY_COLOR);
 						return;
 					case DISEASED:
 						farmingContractOverview.updateStatus("Diseased", CropState.DISEASED.getColor());
@@ -189,13 +189,13 @@ class OverviewTabPanel extends TabContentPanel
 				// fallthrough
 			case UNKNOWN:
 			default:
-				farmingContractOverview.updateStatus("Unknown", Color.GRAY);
+				farmingContractOverview.updateStatus("Unknown", ColorScheme.LIGHT_GRAY_COLOR);
 				return;
 			case EMPTY:
-				farmingContractOverview.updateStatus(farmingContractManager.getContractName(), Color.GRAY);
+				farmingContractOverview.updateStatus(farmingContractManager.getContractName(), ColorScheme.LIGHT_GRAY_COLOR);
 				return;
 			case OCCUPIED:
-				farmingContractOverview.updateStatus(farmingContractManager.getContractName(), Color.RED);
+				farmingContractOverview.updateStatus(farmingContractManager.getContractName(), ColorScheme.PROGRESS_ERROR_COLOR);
 				return;
 		}
 	}

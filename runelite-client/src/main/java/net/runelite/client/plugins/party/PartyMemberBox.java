@@ -46,6 +46,7 @@ import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.components.MouseDragEventForwarder;
 import net.runelite.client.ui.components.ProgressBar;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ImageUtil;
 
 class PartyMemberBox extends JPanel
@@ -86,7 +87,7 @@ class PartyMemberBox extends JPanel
 		container.setBorder(new EmptyBorder(5, 5, 5, 5));
 
 		// create a line border with the specified color and width
-		Border border = BorderFactory.createLineBorder(Color.gray, 1);
+		Border border = BorderFactory.createLineBorder(Theme.getActive().getBorderSubtle(), 1);
 		avatar.setBorder(border);
 
 		avatar.setHorizontalAlignment(SwingConstants.CENTER);
@@ -163,10 +164,10 @@ class PartyMemberBox extends JPanel
 		prayerBar.setCenterLabel(progressBarLabel(memberPartyData.getPrayer(), memberPartyData.getMaxPrayer()));
 
 		// Update name label
-		Color playerColor = config.recolorNames() ? memberPartyData.getColor() : Color.WHITE;
+		Color playerColor = config.recolorNames() ? memberPartyData.getColor() : ColorScheme.TEXT_COLOR;
 		boolean isLoggedIn = member.isLoggedIn();
 
-		name.setForeground(isLoggedIn ? playerColor : Color.GRAY);
+		name.setForeground(isLoggedIn ? playerColor : ColorScheme.LIGHT_GRAY_COLOR);
 		name.setText(member.getDisplayName());
 	}
 

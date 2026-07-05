@@ -140,7 +140,7 @@ public class InfoPanel extends PluginPanel
 		loggedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		loggedLabel.setFont(smallFont);
 
-		emailLabel.setForeground(Color.WHITE);
+		emailLabel.setForeground(ColorScheme.TEXT_COLOR);
 		emailLabel.setFont(smallFont);
 		emailLabel.enableAutoLinkHandler(false);
 		emailLabel.addHyperlinkListener(e ->
@@ -246,11 +246,11 @@ public class InfoPanel extends PluginPanel
 		});
 
 		JLabel topLine = new JLabel(topText);
-		topLine.setForeground(Color.WHITE);
+		topLine.setForeground(ColorScheme.TEXT_COLOR);
 		topLine.setFont(FontManager.getRunescapeSmallFont());
 
 		JLabel bottomLine = new JLabel(bottomText);
-		bottomLine.setForeground(Color.WHITE);
+		bottomLine.setForeground(ColorScheme.TEXT_COLOR);
 		bottomLine.setFont(FontManager.getRunescapeSmallFont());
 
 		textContainer.add(topLine);

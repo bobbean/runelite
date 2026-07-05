@@ -113,7 +113,7 @@ class GrandExchangeItemPanel extends JPanel
 
 		// Item name
 		JLabel itemName = new JLabel();
-		itemName.setForeground(Color.WHITE);
+		itemName.setForeground(ColorScheme.TEXT_COLOR);
 		itemName.setMaximumSize(new Dimension(0, 0));        // to limit the label's size for
 		itemName.setPreferredSize(new Dimension(0, 0));    // items with longer names
 		itemName.setText(name);

@@ -41,6 +41,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.border.EmptyBorder;
 import lombok.AccessLevel;
 import lombok.Getter;
+import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.http.api.worlds.World;
@@ -255,8 +256,8 @@ class WorldTableRow extends JPanel
 
 	public void recolour(boolean current)
 	{
-		playerCountField.setForeground(current ? CURRENT_WORLD : Color.WHITE);
-		pingField.setForeground(current ? CURRENT_WORLD : Color.WHITE);
+		playerCountField.setForeground(current ? CURRENT_WORLD : ColorScheme.TEXT_COLOR);
+		pingField.setForeground(current ? CURRENT_WORLD : ColorScheme.TEXT_COLOR);
 
 		if (current)
 		{
@@ -296,7 +297,7 @@ class WorldTableRow extends JPanel
 		}
 		else
 		{
-			activityField.setForeground(Color.WHITE);
+			activityField.setForeground(ColorScheme.TEXT_COLOR);
 		}
 
 		worldField.setForeground(types.contains(WorldType.MEMBERS) ? MEMBERS_WORLD : FREE_WORLD);

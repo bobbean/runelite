@@ -244,7 +244,7 @@ class ScreenMarkerPanel extends JPanel
 		nameInput.setEditable(false);
 		nameInput.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		nameInput.setPreferredSize(new Dimension(0, 24));
-		nameInput.getTextField().setForeground(Color.WHITE);
+		nameInput.getTextField().setForeground(ColorScheme.TEXT_COLOR);
 		nameInput.getTextField().setBorder(new EmptyBorder(0, 8, 0, 0));
 		nameInput.addKeyListener(new KeyAdapter()
 		{

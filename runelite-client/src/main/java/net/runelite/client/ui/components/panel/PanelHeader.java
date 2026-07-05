@@ -52,6 +52,7 @@ public class PanelHeader extends JPanel
 
 	private final JLabel title;
 	private final JPanel actions;
+	private final IconButton back;
 
 	public PanelHeader(String text)
 	{
@@ -73,7 +74,12 @@ public class PanelHeader extends JPanel
 
 		if (onBack != null)
 		{
-			add(new IconButton(BACK_ICON, "Back", onBack), BorderLayout.WEST);
+			back = new IconButton(BACK_ICON, "Back", onBack);
+			add(back, BorderLayout.WEST);
+		}
+		else
+		{
+			back = null;
 		}
 
 		title = new JLabel(text);
@@ -115,5 +121,14 @@ public class PanelHeader extends JPanel
 	public void setTitleVisible(boolean visible)
 	{
 		title.setVisible(visible);
+	}
+
+	/**
+	 * Shows/hides the leading back button (drill-in panels that also serve as
+	 * their own top level). Only valid when the header was built with onBack.
+	 */
+	public void setBackVisible(boolean visible)
+	{
+		back.setVisible(visible);
 	}
 }
