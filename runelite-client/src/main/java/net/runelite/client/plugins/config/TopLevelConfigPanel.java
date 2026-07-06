@@ -39,7 +39,7 @@ import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
 
 @Singleton
-class TopLevelConfigPanel extends PluginPanel
+public class TopLevelConfigPanel extends PluginPanel
 {
 	private final MaterialTabGroup tabGroup;
 	private final CardLayout layout;

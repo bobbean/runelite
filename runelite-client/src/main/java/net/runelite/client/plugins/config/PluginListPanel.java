@@ -26,10 +26,8 @@ package net.runelite.client.plugins.config;
 
 import com.google.common.collect.ImmutableList;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -44,7 +42,6 @@ import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JToggleButton;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
@@ -69,11 +66,12 @@ import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.MultiplexingPluginPanel;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
+import net.runelite.client.ui.components.panel.Chip;
 import net.runelite.client.ui.components.panel.SectionHeader;
+import net.runelite.client.ui.pluginhub.PluginHubWindow;
 import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.Text;
 
@@ -97,7 +95,7 @@ class PluginListPanel extends PluginPanel
 	private final ConfigManager configManager;
 	private final PluginManager pluginManager;
 	private final Provider<ConfigPanel> configPanelProvider;
-	private final Provider<PluginHubPanel> pluginHubPanelProvider;
+	private final Provider<PluginHubWindow> pluginHubWindowProvider;
 	private final List<PluginConfigurationDescriptor> fakePlugins = new ArrayList<>();
 
 	@Getter
@@ -109,7 +107,7 @@ class PluginListPanel extends PluginPanel
 	private final IconTextField searchBar;
 	private final JScrollPane scrollPane;
 	private final FixedWidthPanel mainPanel;
-	private final List<CategoryChip> categoryChips = new ArrayList<>();
+	private final List<Chip> categoryChips = new ArrayList<>();
 	private List<PluginListItem> pluginList;
 
 	// search term of the selected category chip; null = All
@@ -122,7 +120,7 @@ class PluginListPanel extends PluginPanel
 		ExternalPluginManager externalPluginManager,
 		EventBus eventBus,
 		Provider<ConfigPanel> configPanelProvider,
-		Provider<PluginHubPanel> pluginHubPanelProvider)
+		Provider<PluginHubWindow> pluginHubWindowProvider)
 	{
 		super(false);
 
@@ -130,7 +128,7 @@ class PluginListPanel extends PluginPanel
 		this.pluginManager = pluginManager;
 		this.externalPluginManager = externalPluginManager;
 		this.configPanelProvider = configPanelProvider;
-		this.pluginHubPanelProvider = pluginHubPanelProvider;
+		this.pluginHubWindowProvider = pluginHubWindowProvider;
 
 		muxer = new MultiplexingPluginPanel(this)
 		{
@@ -206,10 +204,10 @@ class PluginListPanel extends PluginPanel
 		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		add(scrollPane, BorderLayout.CENTER);
 
-		// the Plugin Hub lives here now, not in the top tab strip; it becomes
-		// its own window in Phase 4 (see docs/ui-rework/design/NAVIGATION.md §2)
+		// the Plugin Hub is its own window now (Phase 4, PLUGIN_HUB.md), not a
+		// drill-in on this muxer
 		JButton hubButton = new JButton("Browse Plugin Hub...");
-		hubButton.addActionListener(ev -> muxer.pushState(pluginHubPanelProvider.get()));
+		hubButton.addActionListener(ev -> pluginHubWindowProvider.get().open());
 
 		JPanel hubRow = new JPanel(new BorderLayout());
 		hubRow.setBorder(new EmptyBorder(0, 10, 10, 10));
@@ -298,7 +296,7 @@ class PluginListPanel extends PluginPanel
 		mainPanel.removeAll();
 
 		// a text query overrides category browsing
-		for (CategoryChip chip : categoryChips)
+		for (Chip chip : categoryChips)
 		{
 			chip.setEnabled(!searching);
 		}
@@ -341,9 +339,9 @@ class PluginListPanel extends PluginPanel
 		revalidate();
 	}
 
-	private CategoryChip addCategoryChip(JPanel chipBar, ButtonGroup group, String label, String searchTerm)
+	private Chip addCategoryChip(JPanel chipBar, ButtonGroup group, String label, String searchTerm)
 	{
-		CategoryChip chip = new CategoryChip(label);
+		Chip chip = new Chip(label);
 		chip.addActionListener(ev ->
 		{
 			if (searchTerm != null && searchTerm.equals(selectedCategory))
@@ -375,67 +373,6 @@ class PluginListPanel extends PluginPanel
 		return wrapper;
 	}
 
-	private static class CategoryChip extends JToggleButton
-	{
-		CategoryChip(String label)
-		{
-			super(label);
-			setFont(FontManager.getSmallFont());
-			setFocusable(false);
-			setFocusPainted(false);
-			setContentAreaFilled(false);
-			setBorder(new EmptyBorder(3, Theme.SPACE_8, 4, Theme.SPACE_8));
-			setRolloverEnabled(true);
-			addChangeListener(ev -> updateForeground());
-			updateForeground();
-		}
-
-		private void updateForeground()
-		{
-			Theme theme = Theme.getActive();
-			Color fg;
-			if (isSelected())
-			{
-				fg = theme.getOnAccent();
-			}
-			else if (!isEnabled())
-			{
-				fg = theme.getTextDisabled();
-			}
-			else if (getModel().isRollover())
-			{
-				fg = theme.getTextPrimary();
-			}
-			else
-			{
-				fg = theme.getTextMuted();
-			}
-
-			if (!fg.equals(getForeground()))
-			{
-				setForeground(fg);
-			}
-		}
-
-		@Override
-		protected void paintComponent(Graphics g)
-		{
-			Theme theme = Theme.getActive();
-			if (isSelected())
-			{
-				g.setColor(theme.getAccent());
-				g.fillRect(0, 0, getWidth(), getHeight());
-			}
-			else
-			{
-				g.setColor(getModel().isRollover() && isEnabled() ? theme.getSurfaceHover() : theme.getControl());
-				g.fillRect(0, 0, getWidth(), getHeight());
-				g.setColor(theme.getBorderSubtle());
-				g.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
-			}
-			super.paintComponent(g);
-		}
-	}
 
 	void openConfigurationPanel(String configGroup)
 	{

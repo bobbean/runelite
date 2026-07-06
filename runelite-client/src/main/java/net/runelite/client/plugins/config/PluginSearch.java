@@ -34,7 +34,7 @@ import java.util.stream.StreamSupport;
 import net.runelite.client.util.Text;
 import org.apache.commons.lang3.StringUtils;
 
-class PluginSearch
+public class PluginSearch
 {
 	private static final Splitter SPLITTER = Splitter.on(" ").trimResults().omitEmptyStrings();
 

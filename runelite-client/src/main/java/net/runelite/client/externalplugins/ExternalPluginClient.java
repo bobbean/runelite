@@ -41,6 +41,8 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -202,6 +204,92 @@ public class ExternalPluginClient
 				response.close();
 			}
 		});
+	}
+
+	// the plugin-hub descriptor (repository + commit) and the source repo's
+	// README, mirroring how runelite.net's plugin page sources its long
+	// description. The client manifest only carries the short description.
+	private static final HttpUrl PLUGINHUB_SOURCE =
+		HttpUrl.get("https://raw.githubusercontent.com/runelite/plugin-hub/master/plugins/");
+	private static final Pattern GITHUB_REPO =
+		Pattern.compile("github\\.com/([^/]+)/(.+?)(?:\\.git)?/?$");
+	private static final String[] README_NAMES = {"README.md", "readme.md", "Readme.md"};
+
+	/**
+	 * Fetches a plugin's full description (its source repo's README markdown),
+	 * or {@code null} if it can't be resolved. Two hops: the plugin-hub
+	 * descriptor gives the source repository and pinned commit, then the README
+	 * is read from that repo at that commit.
+	 */
+	public String downloadDescription(String internalName) throws IOException
+	{
+		HttpUrl descriptorUrl = PLUGINHUB_SOURCE.newBuilder().addPathSegment(internalName).build();
+		String descriptor = downloadString(descriptorUrl);
+		if (descriptor == null)
+		{
+			return null;
+		}
+
+		String repository = null;
+		String commit = null;
+		for (String line : descriptor.split("\n"))
+		{
+			int eq = line.indexOf('=');
+			if (eq < 0)
+			{
+				continue;
+			}
+			String key = line.substring(0, eq).trim();
+			String value = line.substring(eq + 1).trim();
+			if ("repository".equals(key))
+			{
+				repository = value;
+			}
+			else if ("commit".equals(key))
+			{
+				commit = value;
+			}
+		}
+
+		if (repository == null || commit == null)
+		{
+			return null;
+		}
+
+		Matcher m = GITHUB_REPO.matcher(repository);
+		if (!m.find())
+		{
+			return null;
+		}
+		String ownerRepo = m.group(1) + "/" + m.group(2);
+
+		for (String name : README_NAMES)
+		{
+			HttpUrl readme = HttpUrl.parse(
+				"https://raw.githubusercontent.com/" + ownerRepo + "/" + commit + "/" + name);
+			if (readme == null)
+			{
+				return null;
+			}
+			String md = downloadString(readme);
+			if (md != null)
+			{
+				return md;
+			}
+		}
+		return null;
+	}
+
+	private String downloadString(HttpUrl url) throws IOException
+	{
+		try (Response res = okHttpClient.newCall(new Request.Builder().url(url).build()).execute())
+		{
+			if (res.code() != 200)
+			{
+				return null;
+			}
+			return res.body().string();
+		}
 	}
 
 	public Map<String, Integer> getPluginCounts() throws IOException

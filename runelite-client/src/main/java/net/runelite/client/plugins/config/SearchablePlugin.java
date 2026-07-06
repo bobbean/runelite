@@ -26,7 +26,7 @@ package net.runelite.client.plugins.config;
 
 import java.util.List;
 
-interface SearchablePlugin
+public interface SearchablePlugin
 {
 	String getSearchableName();
 
