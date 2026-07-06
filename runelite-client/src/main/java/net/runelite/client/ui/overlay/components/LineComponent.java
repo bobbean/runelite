@@ -36,6 +36,7 @@ import java.awt.Rectangle;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.Text;
 
 @Setter
@@ -46,10 +47,10 @@ public class LineComponent implements LayoutableRenderableEntity
 	private String right;
 
 	@Builder.Default
-	private Color leftColor = Color.WHITE;
+	private Color leftColor = Theme.getActive().getOverlayText();
 
 	@Builder.Default
-	private Color rightColor = Color.WHITE;
+	private Color rightColor = Theme.getActive().getOverlayText();
 
 	private Font leftFont;
 

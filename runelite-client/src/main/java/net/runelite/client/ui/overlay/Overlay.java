@@ -74,6 +74,12 @@ public abstract class Overlay implements LayoutableRenderableEntity
 	 * to other overlays.
 	 */
 	private float priority = PRIORITY_DEFAULT;
+	/**
+	 * User-adjusted draw order within a layer; sorts above priority, higher
+	 * draws later (on top). Persisted by the overlay manager and adjusted via
+	 * the overlay context menu's bring forward/send backward entries.
+	 */
+	private int zOrder;
 	private OverlayLayer layer = OverlayLayer.UNDER_WIDGETS;
 	private final List<Integer> drawHooks = new ArrayList<>();
 	private final List<OverlayMenuEntry> menuEntries = new ArrayList<>();

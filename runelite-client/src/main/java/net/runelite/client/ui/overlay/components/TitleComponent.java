@@ -33,6 +33,7 @@ import java.awt.Rectangle;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import net.runelite.client.ui.theme.Theme;
 
 @Setter
 @Builder
@@ -41,7 +42,7 @@ public class TitleComponent implements LayoutableRenderableEntity
 	private String text;
 
 	@Builder.Default
-	private Color color = Color.WHITE;
+	private Color color = Theme.getActive().getOverlayText();
 
 	@Builder.Default
 	private Point preferredLocation = new Point();

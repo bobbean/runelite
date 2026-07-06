@@ -92,9 +92,17 @@ public final class Theme
 	private final Color positive;
 	private final Color value;
 
-	// overlay seeds (full overlay pass is Phase 5)
+	// overlay chrome (resting overlays keep the game's translucent-brown look
+	// by decision; these seeds only move the values behind tokens)
 	private final Color overlayBackground;
 	private final Color overlayText;
+	private final Color overlayProgress;
+
+	// overlay management-mode feedback (client UI drawn over the game while the
+	// drag hotkey is held, so the accent is allowed here — see OVERLAYS.md §3)
+	private final Color overlayManageIdle;
+	private final Color overlayManageActive;
+	private final Color overlayManageTarget;
 
 	private Theme(Color accent)
 	{
@@ -128,6 +136,11 @@ public final class Theme
 
 		overlayBackground = new Color(70, 61, 50, 156);
 		overlayText = Color.WHITE;
+		overlayProgress = new Color(82, 161, 82);
+
+		overlayManageIdle = accentMuted;
+		overlayManageActive = accent;
+		overlayManageTarget = error;
 	}
 
 	/**

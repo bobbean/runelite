@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import lombok.Setter;
 import net.runelite.client.ui.overlay.RenderableEntity;
+import net.runelite.client.ui.theme.Theme;
 
 public class TextComponent implements RenderableEntity
 {
@@ -45,7 +46,7 @@ public class TextComponent implements RenderableEntity
 	private int positionX;
 	private int positionY;
 	@Setter
-	private Color color = Color.WHITE;
+	private Color color = Theme.getActive().getOverlayText();
 	@Setter
 	private boolean outline;
 	/**

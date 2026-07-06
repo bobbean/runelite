@@ -30,6 +30,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import net.runelite.client.plugins.Plugin;
+import net.runelite.client.ui.theme.Theme;
 
 @ToString
 public class Counter extends InfoBox
@@ -53,7 +54,7 @@ public class Counter extends InfoBox
 	@Override
 	public Color getTextColor()
 	{
-		return Color.WHITE;
+		return Theme.getActive().getOverlayText();
 	}
 
 }

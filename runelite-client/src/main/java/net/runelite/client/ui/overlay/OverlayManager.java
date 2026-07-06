@@ -77,6 +77,7 @@ public class OverlayManager
 	private static final String OVERLAY_CONFIG_ORIGIN_X = "_originX";
 	private static final String OVERLAY_CONFIG_ORIGIN_Y = "_originY";
 	private static final String OVERLAY_CONFIG_PREFERRED_SIZE = "_preferredSize";
+	private static final String OVERLAY_CONFIG_Z_ORDER = "_zOrder";
 	private static final String RUNELITE_CONFIG_GROUP_NAME = RuneLiteConfig.class.getAnnotation(ConfigGroup.class).value();
 
 	static final Comparator<Overlay> OVERLAY_COMPARATOR = (a, b) ->
@@ -89,6 +90,12 @@ public class OverlayManager
 			// This is so non-dynamic overlays render after dynamic
 			// overlays, which are generally in the scene
 			return aPos.compareTo(bPos);
+		}
+
+		// User-adjusted z-order beats plugin priority; higher draws later (on top)
+		if (a.getZOrder() != b.getZOrder())
+		{
+			return Integer.compare(a.getZOrder(), b.getZOrder());
 		}
 
 		// For dynamic overlays, higher priority means to
@@ -306,7 +313,51 @@ public class OverlayManager
 		saveOverlayPosition(overlay);
 		saveOverlaySize(overlay);
 		saveOverlayLocation(overlay);
+		saveOverlayZOrder(overlay);
 		rebuildOverlayLayers();
+	}
+
+	/**
+	 * The z-order that places the overlay at the end of the stack of overlays
+	 * sharing its (preferred) position, so that snap order determines stacking
+	 * order instead of plugin priority alone.
+	 */
+	synchronized int nextZOrder(final Overlay overlay)
+	{
+		final OverlayPosition position = MoreObjects.firstNonNull(overlay.getPreferredPosition(), overlay.getPosition());
+		int max = 0;
+		for (Overlay other : overlays)
+		{
+			if (other != overlay
+				&& MoreObjects.firstNonNull(other.getPreferredPosition(), other.getPosition()) == position)
+			{
+				max = Math.max(max, other.getZOrder());
+			}
+		}
+		return max + 1;
+	}
+
+	/**
+	 * Whether the overlay's bounds intersect another movable overlay's, used to
+	 * decide when the z-order menu entries are relevant.
+	 */
+	synchronized boolean isOverlapping(final Overlay overlay)
+	{
+		final Rectangle bounds = overlay.getBounds();
+		if (bounds.isEmpty())
+		{
+			return false;
+		}
+
+		for (Overlay other : overlays)
+		{
+			if (other != overlay && other.isMovable() && !other.getBounds().isEmpty()
+				&& other.getBounds().intersects(bounds))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -317,6 +368,7 @@ public class OverlayManager
 	public synchronized void resetOverlay(final Overlay overlay)
 	{
 		overlay.reset();
+		overlay.setZOrder(0);
 		saveOverlay(overlay);
 		// revalidate all overlays so if this is a snapcorner, WidgetOverlays in it correctly reset
 		overlays.forEach(Overlay::revalidate);
@@ -402,6 +454,8 @@ public class OverlayManager
 		final Point location = loadOverlayLocation(overlay);
 		final Dimension size = loadOverlaySize(overlay);
 		final OverlayPosition position = loadOverlayPosition(overlay);
+		final Integer zOrder = loadOverlayZOrder(overlay);
+		overlay.setZOrder(zOrder != null ? zOrder : 0);
 
 		if (overlay.isMovable())
 		{
@@ -749,6 +803,25 @@ public class OverlayManager
 				RUNELITE_CONFIG_GROUP_NAME,
 				key);
 		}
+	}
+
+	private void saveOverlayZOrder(final Overlay overlay)
+	{
+		final String key = overlay.getName() + OVERLAY_CONFIG_Z_ORDER;
+		if (overlay.getZOrder() != 0)
+		{
+			configManager.setConfiguration(RUNELITE_CONFIG_GROUP_NAME, key, overlay.getZOrder());
+		}
+		else
+		{
+			configManager.unsetConfiguration(RUNELITE_CONFIG_GROUP_NAME, key);
+		}
+	}
+
+	private Integer loadOverlayZOrder(final Overlay overlay)
+	{
+		final String key = overlay.getName() + OVERLAY_CONFIG_Z_ORDER;
+		return configManager.getConfiguration(RUNELITE_CONFIG_GROUP_NAME, key, Integer.class);
 	}
 
 	private Point loadOverlayLocation(final Overlay overlay)

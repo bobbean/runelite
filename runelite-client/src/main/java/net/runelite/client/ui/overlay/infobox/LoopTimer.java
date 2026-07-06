@@ -33,6 +33,7 @@ import java.time.temporal.ChronoUnit;
 import lombok.Getter;
 import lombok.ToString;
 import net.runelite.client.plugins.Plugin;
+import net.runelite.client.ui.theme.Theme;
 
 @Getter
 @ToString
@@ -79,7 +80,7 @@ public class LoopTimer extends InfoBox
 			return Color.RED.brighter();
 		}
 
-		return Color.WHITE;
+		return Theme.getActive().getOverlayText();
 	}
 
 	private Duration getProgress()

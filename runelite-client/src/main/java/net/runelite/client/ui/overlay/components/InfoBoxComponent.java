@@ -37,6 +37,7 @@ import lombok.Getter;
 import lombok.Setter;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.infobox.InfoBox;
+import net.runelite.client.ui.theme.Theme;
 
 @Setter
 public class InfoBoxComponent implements LayoutableRenderableEntity
@@ -53,7 +54,7 @@ public class InfoBoxComponent implements LayoutableRenderableEntity
 	private Point preferredLocation = new Point();
 	private Dimension preferredSize = new Dimension(DEFAULT_SIZE, DEFAULT_SIZE);
 	private String text;
-	private Color color = Color.WHITE;
+	private Color color = Theme.getActive().getOverlayText();
 	private Font font;
 	private boolean outline;
 	private Color backgroundColor = ComponentConstants.STANDARD_BACKGROUND_COLOR;

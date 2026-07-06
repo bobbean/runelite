@@ -50,15 +50,18 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.KeyCode;
+import net.runelite.api.MenuAction;
 import net.runelite.api.events.BeforeRender;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.FocusChanged;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.PostMenuSort;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetItem;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -68,6 +71,7 @@ import net.runelite.client.input.MouseAdapter;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.JagexColors;
+import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.HotkeyListener;
 import org.slf4j.Marker;
@@ -80,10 +84,8 @@ public class OverlayRenderer extends MouseAdapter
 	private static final Marker DEDUPLICATE = MarkerFactory.getMarker("DEDUPLICATE");
 	private static final int PADDING = 2;
 	private static final int OVERLAY_RESIZE_TOLERANCE = 5;
-	private static final Color MOVING_OVERLAY_COLOR = new Color(255, 255, 0, 100);
-	private static final Color MOVING_OVERLAY_ACTIVE_COLOR = new Color(255, 255, 0, 200);
-	private static final Color MOVING_OVERLAY_TARGET_COLOR = Color.RED;
-	private static final Color MOVING_OVERLAY_RESIZING_COLOR = new Color(255, 0, 255, 200);
+	private static final int RESIZE_GRIP_SIZE = 8;
+	private static final String OVERLAY_HINT_KEY = "overlayManagementHint";
 
 	private final Client client;
 	private final OverlayManager overlayManager;
@@ -92,6 +94,13 @@ public class OverlayRenderer extends MouseAdapter
 	private final EventBus eventBus;
 	private final ChatMessageManager chatMessageManager;
 	private final SnapCorners snapCorners;
+	private final ConfigManager configManager;
+
+	// management-mode feedback colors, resolved from the active theme once
+	// (theme changes are restart-to-apply) — see docs/ui-rework/design/OVERLAYS.md §3
+	private final Color manageIdleColor;
+	private final Color manageActiveColor;
+	private final Color manageTargetColor;
 
 	private Font font, tooltipFont, interfaceFont;
 
@@ -102,6 +111,8 @@ public class OverlayRenderer extends MouseAdapter
 	private Overlay dragTargetOverlay;
 	private Rectangle currentManagedBounds;
 	private boolean inOverlayManagingMode;
+	private boolean managementLocked; // latched via middle-click; mode survives hotkey release
+	private boolean hotkeyHeld;
 	private boolean inOverlayResizingMode;
 	private boolean inOverlayDraggingMode;
 	private boolean startedMovingOverlay;
@@ -120,7 +131,8 @@ public class OverlayRenderer extends MouseAdapter
 		final ClientUI clientUI,
 		final EventBus eventBus,
 		final ChatMessageManager chatMessageManager,
-		final SnapCorners snapCorners
+		final SnapCorners snapCorners,
+		final ConfigManager configManager
 	)
 	{
 		this.client = client;
@@ -130,12 +142,19 @@ public class OverlayRenderer extends MouseAdapter
 		this.eventBus = eventBus;
 		this.chatMessageManager = chatMessageManager;
 		this.snapCorners = snapCorners;
+		this.configManager = configManager;
+
+		final Theme theme = Theme.getActive();
+		manageIdleColor = theme.getOverlayManageIdle();
+		manageActiveColor = theme.getOverlayManageActive();
+		manageTargetColor = theme.getOverlayManageTarget();
 
 		HotkeyListener hotkeyListener = new HotkeyListener(runeLiteConfig::dragHotkey)
 		{
 			@Override
 			public void hotkeyPressed()
 			{
+				hotkeyHeld = true;
 				inOverlayManagingMode = true;
 				snapCorners.getSnapCorners().forEach(s ->
 				{
@@ -148,7 +167,8 @@ public class OverlayRenderer extends MouseAdapter
 			@Override
 			public void hotkeyReleased()
 			{
-				if (inOverlayManagingMode)
+				hotkeyHeld = false;
+				if (inOverlayManagingMode && !managementLocked)
 				{
 					inOverlayManagingMode = false;
 					snapCorners.getSnapCorners().forEach(s ->
@@ -172,7 +192,10 @@ public class OverlayRenderer extends MouseAdapter
 	{
 		if (!event.isFocused())
 		{
-			if (inOverlayManagingMode)
+			hotkeyHeld = false;
+			// a latched mode survives focus loss — the latch exists precisely
+			// so the key state doesn't matter
+			if (inOverlayManagingMode && !managementLocked)
 			{
 				inOverlayManagingMode = false;
 				resetOverlayManagementMode();
@@ -183,9 +206,29 @@ public class OverlayRenderer extends MouseAdapter
 	}
 
 	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		if (event.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+
+		if (configManager.getConfiguration(RuneLiteConfig.GROUP_NAME, OVERLAY_HINT_KEY) == null)
+		{
+			configManager.setConfiguration(RuneLiteConfig.GROUP_NAME, OVERLAY_HINT_KEY, true);
+			chatMessageManager.queue(QueuedMessage.builder()
+				.type(ChatMessageType.CONSOLE)
+				.runeLiteFormattedMessage("Hold " + runeLiteConfig.dragHotkey() + " to move or resize overlays. "
+					+ "Shift+right-click an overlay for options, and "
+					+ runeLiteConfig.dragHotkey() + "+middle-click to lock overlay editing on.")
+				.build());
+		}
+	}
+
+	@Subscribe
 	private void onMenuOpened(MenuOpened event)
 	{
-		if (client.isKeyPressed(KeyCode.KC_SHIFT) && curHoveredOverlay != null)
+		if ((client.isKeyPressed(KeyCode.KC_SHIFT) || inOverlayManagingMode) && curHoveredOverlay != null)
 		{
 			overlayManager.addOriginMenu(curHoveredOverlay);
 		}
@@ -202,17 +245,41 @@ public class OverlayRenderer extends MouseAdapter
 			return;
 		}
 
-		final boolean shift = client.isKeyPressed(KeyCode.KC_SHIFT);
-		if (!shift)
+		// overlay entries surface on shift+right-click (upstream behavior) and on
+		// plain right-click while edit mode is latched on
+		if (!client.isKeyPressed(KeyCode.KC_SHIFT) && !inOverlayManagingMode)
 		{
 			return;
 		}
 
-		List<OverlayMenuEntry> menuEntries = overlay.getMenuEntries();
-		if (menuEntries.isEmpty())
+		final String target = overlay.getPlugin() != null
+			? ColorUtil.wrapWithColorTag(overlay.getPlugin().getName(), JagexColors.MENU_TARGET)
+			: "";
+
+		if (overlay.isMovable() && overlayManager.isOverlapping(overlay))
 		{
-			return;
+			client.createMenuEntry(-2)
+				.setOption("Send backward")
+				.setTarget(target)
+				.setType(MenuAction.RUNELITE_OVERLAY)
+				.onClick(e -> adjustZOrder(overlay, -1));
+			client.createMenuEntry(-2)
+				.setOption("Bring forward")
+				.setTarget(target)
+				.setType(MenuAction.RUNELITE_OVERLAY)
+				.onClick(e -> adjustZOrder(overlay, 1));
 		}
+
+		if (overlay.isMovable() && overlay.isResettable())
+		{
+			client.createMenuEntry(-2)
+				.setOption("Reset position")
+				.setTarget(target)
+				.setType(MenuAction.RUNELITE_OVERLAY)
+				.onClick(e -> overlayManager.resetOverlay(overlay));
+		}
+
+		List<OverlayMenuEntry> menuEntries = overlay.getMenuEntries();
 
 		// Add in reverse order so they display correctly in the right-click menu
 		for (int i = menuEntries.size() - 1; i >= 0; --i)
@@ -225,6 +292,12 @@ public class OverlayRenderer extends MouseAdapter
 				.setType(overlayMenuEntry.getMenuAction())
 				.onClick(MoreObjects.firstNonNull(overlayMenuEntry.callback, e -> eventBus.post(new OverlayMenuClicked(overlayMenuEntry, overlay))));
 		}
+	}
+
+	private void adjustZOrder(Overlay overlay, int delta)
+	{
+		overlay.setZOrder(overlay.getZOrder() + delta);
+		overlayManager.saveOverlay(overlay);
 	}
 
 	@Subscribe
@@ -353,28 +426,36 @@ public class OverlayRenderer extends MouseAdapter
 				if (inOverlayManagingMode && overlay.isMovable())
 				{
 					Color boundsColor;
-					if (inOverlayResizingMode && currentManagedOverlay == overlay)
+					if ((inOverlayResizingMode || inOverlayDraggingMode) && currentManagedOverlay == overlay)
 					{
-						boundsColor = MOVING_OVERLAY_RESIZING_COLOR;
-					}
-					else if (inOverlayDraggingMode && currentManagedOverlay == overlay)
-					{
-						boundsColor = MOVING_OVERLAY_ACTIVE_COLOR;
+						boundsColor = manageActiveColor;
 					}
 					else if (inOverlayDraggingMode && overlay.isDragTargetable() && currentManagedOverlay.isDragTargetable()
 						&& currentManagedOverlay.getBounds().intersects(bounds))
 					{
-						boundsColor = MOVING_OVERLAY_TARGET_COLOR;
+						boundsColor = manageTargetColor;
 						assert currentManagedOverlay != overlay;
 						dragTargetOverlay = overlay;
 					}
 					else
 					{
-						boundsColor = MOVING_OVERLAY_COLOR;
+						boundsColor = manageIdleColor;
 					}
 
 					graphics.setColor(boundsColor);
 					graphics.draw(bounds);
+
+					if (overlay.isResizable())
+					{
+						// resize affordance: corner grip, only visible in management mode
+						final int gx = bounds.x + bounds.width;
+						final int gy = bounds.y + bounds.height;
+						graphics.fillPolygon(
+							new int[]{gx, gx - RESIZE_GRIP_SIZE, gx},
+							new int[]{gy, gy, gy - RESIZE_GRIP_SIZE},
+							3);
+					}
+
 					graphics.setPaint(paint);
 				}
 
@@ -396,8 +477,24 @@ public class OverlayRenderer extends MouseAdapter
 		final Point mousePoint = mouseEvent.getPoint();
 		mousePosition.setLocation(mousePoint);
 
-		if (!inOverlayManagingMode)
+		// while the menu is open, clicks operate the menu (e.g. Reset position),
+		// so don't grab them for dragging
+		if (!inOverlayManagingMode || client.isMenuOpen())
 		{
+			return mouseEvent;
+		}
+
+		if (SwingUtilities.isMiddleMouseButton(mouseEvent))
+		{
+			// middle-click latches management mode on so it survives releasing
+			// the hotkey; a second middle-click (no hotkey needed) unlatches
+			managementLocked = !managementLocked;
+			if (!managementLocked && !hotkeyHeld)
+			{
+				inOverlayManagingMode = false;
+				resetOverlayManagementMode();
+			}
+			mouseEvent.consume();
 			return mouseEvent;
 		}
 
@@ -410,6 +507,13 @@ public class OverlayRenderer extends MouseAdapter
 
 		if (SwingUtilities.isRightMouseButton(mouseEvent))
 		{
+			// in latched mode (hotkey not held) right-click behaves normally;
+			// the blind reset only applies while the hotkey is physically down
+			if (!hotkeyHeld)
+			{
+				return mouseEvent;
+			}
+
 			if (currentManagedOverlay.isResettable())
 			{
 				overlayManager.resetOverlay(currentManagedOverlay);
@@ -443,6 +547,12 @@ public class OverlayRenderer extends MouseAdapter
 
 		if (!inOverlayManagingMode)
 		{
+			return mouseEvent;
+		}
+
+		if (client.isMenuOpen())
+		{
+			clientUI.setCursor(clientUI.getDefaultCursor());
 			return mouseEvent;
 		}
 
@@ -701,6 +811,8 @@ public class OverlayRenderer extends MouseAdapter
 					currentManagedOverlay.setOrigin(OverlayOrigin.AUTO);
 					currentManagedOverlay.setOriginX(OverlayOriginX.LEFT);
 					currentManagedOverlay.setOriginY(OverlayOriginY.TOP);
+					// append to the corner's stack so snap order determines stacking order
+					currentManagedOverlay.setZOrder(overlayManager.nextZOrder(currentManagedOverlay));
 					currentManagedOverlay.revalidate();
 					break;
 				}

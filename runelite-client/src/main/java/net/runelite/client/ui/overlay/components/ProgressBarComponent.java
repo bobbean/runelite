@@ -34,6 +34,7 @@ import java.awt.Rectangle;
 import java.text.DecimalFormat;
 import lombok.Getter;
 import lombok.Setter;
+import net.runelite.client.ui.theme.Theme;
 
 @Setter
 public class ProgressBarComponent implements LayoutableRenderableEntity
@@ -58,9 +59,9 @@ public class ProgressBarComponent implements LayoutableRenderableEntity
 	private String centerLabel;
 	private String leftLabel;
 	private String rightLabel;
-	private Color foregroundColor = new Color(82, 161, 82);
+	private Color foregroundColor = Theme.getActive().getOverlayProgress();
 	private Color backgroundColor = new Color(255, 255, 255, 127);
-	private Color fontColor = Color.WHITE;
+	private Color fontColor = Theme.getActive().getOverlayText();
 	private Point preferredLocation = new Point();
 	private Dimension preferredSize = new Dimension(ComponentConstants.STANDARD_WIDTH, 16);
 
