@@ -42,6 +42,7 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.MenuSelectionManager;
 import javax.swing.SwingUtilities;
+import net.runelite.client.plugins.config.TopLevelConfigPanel;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.theme.Theme;
 import net.runelite.client.util.ImageUtil;
@@ -295,6 +296,13 @@ class SidebarRail extends JPanel
 	{
 		if (btn != configButton)
 		{
+			if (configButton != null && configButton.getNavBtn().getPanel() instanceof TopLevelConfigPanel)
+			{
+				JMenuItem configItem = new JMenuItem("Config");
+				configItem.addActionListener(ev -> openConfig(btn));
+				menu.add(configItem);
+			}
+
 			boolean isPinned = pinned.contains(btn);
 			JMenuItem pinItem = new JMenuItem(isPinned ? "Unpin" : "Pin");
 			pinItem.addActionListener(ev -> setPinned(btn, !isPinned));
@@ -318,6 +326,16 @@ class SidebarRail extends JPanel
 				menu.add(item);
 			});
 		}
+	}
+
+	private void openConfig(RailButton btn)
+	{
+		// open the Configuration panel, then drill into this plugin's settings —
+		// the config nav button's panel is the TopLevelConfigPanel, and it keys
+		// off the plugin's display name (this button's tooltip)
+		selectHandler.accept(configButton.getNavBtn());
+		((TopLevelConfigPanel) configButton.getNavBtn().getPanel())
+			.openConfigurationPanel(btn.getNavBtn().getTooltip());
 	}
 
 	private void setPinned(RailButton btn, boolean pin)
