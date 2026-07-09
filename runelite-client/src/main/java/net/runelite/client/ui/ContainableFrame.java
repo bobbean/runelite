@@ -59,9 +59,15 @@ public class ContainableFrame extends JFrame
 	@SuppressWarnings("deprecation")
 	private void applyChange(int wX, int wY, int wWidth, int wHeight, int wOldx, int wOldY, int wOldWidth, boolean contain)
 	{
+		if (isFullScreen())
+		{
+			// the window manager owns our bounds while maximized; reshaping here desyncs it
+			return;
+		}
+
 		boolean isSnapped = WinUtil.isWindowArranged(this);
 
-		if ((contain || isSnapped) && !isFullScreen())
+		if (contain || isSnapped)
 		{
 			Rectangle cDpyBounds = this.getGraphicsConfiguration().getBounds();
 			Insets insets = this.getInsets();
