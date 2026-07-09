@@ -1413,7 +1413,6 @@ public class ClientUI
 
 	private class Layout implements LayoutManager2
 	{
-		private int prevState;
 		private int previousContentWidth;
 		private boolean doingLayout;
 
@@ -1463,9 +1462,13 @@ public class ClientUI
 		{
 			Component client = content.getComponent(0);
 			client.setSize(width, height);
-			// must adjust content height since the client height is derived from the content height
-			Insets insets = content.getInsets();
-			content.setSize(content.getWidth(), height + insets.top + insets.bottom);
+			// must adjust content height since the client height is derived from the content height,
+			// unless the window manager has maximized us vertically and owns that height
+			if ((frame.getExtendedState() & Frame.MAXIMIZED_VERT) == 0)
+			{
+				Insets insets = content.getInsets();
+				content.setSize(content.getWidth(), height + insets.top + insets.bottom);
+			}
 			layout(content, true);
 		}
 
@@ -1477,9 +1480,6 @@ public class ClientUI
 
 		private void layout(Container content, boolean forceSizingClient)
 		{
-			int changed = prevState ^ frame.getExtendedState();
-			prevState = frame.getExtendedState();
-
 			Insets insets = content.getInsets();
 			int insetWidth = insets.left + insets.right;
 			int insetHeight = insets.top + insets.bottom;
@@ -1488,6 +1488,13 @@ public class ClientUI
 			Component sidebar = content.getComponent(1);
 
 			log.trace("starting layout  - content={} client={} sidebar={} frame={} prevContent={}", content.getWidth(), client.getWidth(), sidebar.getWidth(), frame.getWidth(), previousContentWidth);
+
+			// On an axis the window manager has maximized we may not resize the frame, so the
+			// content pane's bounds - which the root pane derives from the frame - are
+			// authoritative and must not be overwritten with a size we computed.
+			int state = frame.getExtendedState();
+			boolean maximizedHoriz = (state & Frame.MAXIMIZED_HORIZ) != 0;
+			boolean maximizedVert = (state & Frame.MAXIMIZED_VERT) != 0;
 
 			// adjust sidebar height first, as changing it's height can make it's min width change too
 			int innerHeight = Math.max(content.getHeight() - insetHeight, Math.max(
@@ -1528,7 +1535,9 @@ public class ClientUI
 			// fit window to client
 			int width = clientWidth + sidebarWidth;
 
-			content.setSize(width + insetWidth, innerHeight + insetHeight);
+			content.setSize(
+				maximizedHoriz ? content.getWidth() : width + insetWidth,
+				maximizedVert ? content.getHeight() : innerHeight + insetHeight);
 			content.setPreferredSize(content.getSize());
 			previousContentWidth = width;
 
@@ -1537,10 +1546,17 @@ public class ClientUI
 
 			Rectangle oldBounds = frame.getBounds();
 			frame.revalidateMinimumSize();
-			if ((OSType.getOSType() != OSType.Windows || (changed & Frame.MAXIMIZED_BOTH) == 0)
-				&& !frame.getPreferredSize().equals(oldBounds.getSize()))
+
+			// The state flag can be set before the content pane has been given its new size, so
+			// sizing a maximized axis from our preferred size would push a stale size onto it.
+			Dimension preferred = frame.getPreferredSize();
+			Dimension target = new Dimension(
+				maximizedHoriz ? oldBounds.width : preferred.width,
+				maximizedVert ? oldBounds.height : preferred.height);
+
+			if (!target.equals(oldBounds.getSize()))
 			{
-				frame.containedSetSize(frame.getPreferredSize(), oldBounds);
+				frame.containedSetSize(target, oldBounds);
 				if (!doingLayout)
 				{
 					try
